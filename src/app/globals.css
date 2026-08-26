@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 96%;
+    --surface: 0 0% 3%;
+    --surface-elevated: 0 0% 6%;
+    --border: 0 0% 12%;
+    --purple-primary: 258 90% 66%;
+    --purple-bright: 255 92% 76%;
+  }
+
+  * {
+    border-color: #1F1F1F;
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    background-color: #000000;
+    color: #F5F5F5;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Custom AMOLED Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #000000;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #27272A;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3F3F46;
+  }
+
+  /* Focus rings */
+  *:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.6);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .purple-glow {
+    box-shadow: 0 0 25px -4px rgba(139, 92, 246, 0.25);
+  }
+
+  .purple-glow-sm {
+    box-shadow: 0 0 15px -3px rgba(139, 92, 246, 0.18);
+  }
+
+  .purple-glow-border {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 15px -3px rgba(139, 92, 246, 0.2);
+  }
+
+  .glass-amoled {
+    background-color: rgba(8, 8, 8, 0.85);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
