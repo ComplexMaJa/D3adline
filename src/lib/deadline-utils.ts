@@ -139,3 +139,42 @@ export function getPriorityBadgeStyle(priority: string) {
       return 'bg-emerald-950/40 text-emerald-300 border-emerald-800/30';
   }
 }
+
+export function formatDeadline(
+  dueDateStr: string,
+  dueTimeStr?: string | null,
+  status?: AssignmentStatus
+) {
+  const info = getDeadlineInfo(dueDateStr, dueTimeStr, status);
+  const deadline = parseAssignmentDeadline(dueDateStr, dueTimeStr);
+  const isDueSoon = info.isDueThisWeek;
+
+  let relative = info.label;
+  if (info.isOverdue) {
+    const hours = Math.max(1, Math.abs(differenceInHours(deadline, new Date())));
+    relative = hours < 24 ? `Overdue · ${hours} hour${hours !== 1 ? 's' : ''}` : info.label;
+  } else if (info.isDueToday) {
+    relative = "Due today";
+  } else if (info.isDueTomorrow) {
+    relative = "Due tomorrow";
+  } else if (info.daysRemaining > 0 && info.daysRemaining <= 7) {
+    relative = `Due in ${info.daysRemaining} days`;
+  }
+
+  let absolute = format(deadline, "EEE, MMM d");
+  if (info.isDueToday) {
+    absolute = `Due today · ${info.formattedTime}`;
+  } else if (info.isOverdue) {
+    absolute = `Due today · ${info.formattedTime}`;
+  }
+
+  return {
+    relative,
+    absolute,
+    isOverdue: info.isOverdue,
+    isDueToday: info.isDueToday,
+    isDueSoon,
+    raw: info,
+  };
+}
+
