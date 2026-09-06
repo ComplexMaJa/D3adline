@@ -4,31 +4,34 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Course } from "@/types/database";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CourseProgressCardProps {
   courses: Course[];
 }
 
 export function CourseProgressCard({ courses }: CourseProgressCardProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 space-y-4 hover:border-[#222222] transition-colors">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-          Course Progress
+          {t.dashboard.courses.title}
         </div>
         <Link
           href="/courses"
           className="text-xs font-medium text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
         >
-          <span>View All</span>
+          <span>{t.dashboard.courses.viewAll}</span>
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
 
       {courses.length === 0 ? (
         <div className="text-center py-6">
-          <p className="text-xs text-zinc-500">No courses created yet.</p>
+          <p className="text-xs text-zinc-500">{t.dashboard.courses.noCourses}</p>
         </div>
       ) : (
         <div className="space-y-4">

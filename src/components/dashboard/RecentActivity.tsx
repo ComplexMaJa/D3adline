@@ -5,18 +5,21 @@ import Link from "next/link";
 import { Activity, ArrowRight, CheckCircle2, PlusCircle, Edit3 } from "lucide-react";
 import { Assignment } from "@/types/database";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface RecentActivityProps {
   assignments: Assignment[];
 }
 
 export function RecentActivity({ assignments }: RecentActivityProps) {
+  const { t, dateLocale } = useLanguage();
+
   // Derive recent activities from assignment timestamps and statuses
   const activities = React.useMemo(() => {
     const list: Array<{
       id: string;
       title: string;
-      action: "Completed" | "Created" | "Updated";
+      actionKey: "Completed" | "Created" | "Updated";
       timeAgo: string;
       assignmentId: string;
     }> = [];
@@ -24,14 +27,17 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
     // 1. Completed assignments
     const completed = assignments.filter((a) => a.status === "Completed" || a.progress === 100);
     completed.slice(0, 2).forEach((a) => {
-      let timeAgo = "Recently";
+      let timeAgo = t.dashboard.activity.recently;
       try {
-        timeAgo = formatDistanceToNow(parseISO(a.updated_at || a.created_at), { addSuffix: true });
+        timeAgo = formatDistanceToNow(parseISO(a.updated_at || a.created_at), {
+          addSuffix: true,
+          locale: dateLocale,
+        });
       } catch {}
       list.push({
         id: `comp-${a.id}`,
         title: a.title,
-        action: "Completed",
+        actionKey: "Completed",
         timeAgo,
         assignmentId: a.id,
       });
@@ -40,35 +46,52 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
     // 2. Newly created / in-progress assignments
     const active = assignments.filter((a) => a.status !== "Completed" && a.progress < 100);
     if (active.length > 0) {
-      let timeAgo = "Recently";
+      let timeAgo = t.dashboard.activity.recently;
       try {
-        timeAgo = formatDistanceToNow(parseISO(active[0].created_at), { addSuffix: true });
+        timeAgo = formatDistanceToNow(parseISO(active[0].created_at), {
+          addSuffix: true,
+          locale: dateLocale,
+        });
       } catch {}
       list.push({
         id: `create-${active[0].id}`,
         title: active[0].title,
-        action: "Created",
+        actionKey: "Created",
         timeAgo,
         assignmentId: active[0].id,
       });
     }
 
     if (active.length > 1) {
-      let timeAgo = "Recently";
+      let timeAgo = t.dashboard.activity.recently;
       try {
-        timeAgo = formatDistanceToNow(parseISO(active[1].updated_at || active[1].created_at), { addSuffix: true });
+        timeAgo = formatDistanceToNow(parseISO(active[1].updated_at || active[1].created_at), {
+          addSuffix: true,
+          locale: dateLocale,
+        });
       } catch {}
       list.push({
         id: `update-${active[1].id}`,
         title: active[1].title,
-        action: "Updated",
+        actionKey: "Updated",
         timeAgo,
         assignmentId: active[1].id,
       });
     }
 
     return list.slice(0, 4);
-  }, [assignments]);
+  }, [assignments, dateLocale, t.dashboard.activity.recently]);
+
+  const getActionLabel = (actionKey: "Completed" | "Created" | "Updated") => {
+    switch (actionKey) {
+      case "Completed":
+        return t.dashboard.activity.completed;
+      case "Created":
+        return t.dashboard.activity.created;
+      case "Updated":
+        return t.dashboard.activity.updated;
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 space-y-4 hover:border-[#222222] transition-colors h-full flex flex-col justify-between">
@@ -76,13 +99,13 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           <Activity className="h-4 w-4 text-purple-400" />
-          <span>Recent Activity</span>
+          <span>{t.dashboard.activity.title}</span>
         </div>
         <Link
           href="/assignments"
           className="text-xs font-medium text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
         >
-          <span>View All</span>
+          <span>{t.dashboard.activity.viewAll}</span>
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
@@ -90,7 +113,7 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
       {/* Activity List */}
       {activities.length === 0 ? (
         <div className="py-6 text-center text-xs text-zinc-500">
-          No recent activity logged yet.
+          {t.dashboard.activity.noActivity}
         </div>
       ) : (
         <div className="space-y-3">
@@ -103,11 +126,11 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   {/* Action Icon */}
-                  {item.action === "Completed" ? (
+                  {item.actionKey === "Completed" ? (
                     <div className="h-6 w-6 rounded-full bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 shrink-0">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                     </div>
-                  ) : item.action === "Created" ? (
+                  ) : item.actionKey === "Created" ? (
                     <div className="h-6 w-6 rounded-full bg-blue-950/60 border border-blue-800/40 flex items-center justify-center text-blue-400 shrink-0">
                       <PlusCircle className="h-3.5 w-3.5" />
                     </div>
@@ -127,14 +150,14 @@ export function RecentActivity({ assignments }: RecentActivityProps) {
                   {/* Action label */}
                   <span
                     className={`text-[10px] font-semibold ${
-                      item.action === "Completed"
+                      item.actionKey === "Completed"
                         ? "text-emerald-400"
-                        : item.action === "Created"
+                        : item.actionKey === "Created"
                         ? "text-blue-400"
                         : "text-purple-400"
                     }`}
                   >
-                    {item.action}
+                    {getActionLabel(item.actionKey)}
                   </span>
 
                   {/* Relative timestamp */}

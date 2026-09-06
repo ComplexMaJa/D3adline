@@ -5,12 +5,14 @@ import Link from "next/link";
 import { BarChart3, Clock, ArrowRight } from "lucide-react";
 import { Assignment } from "@/types/database";
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, isSameDay, parseISO } from "date-fns";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface WeeklyWorkloadProps {
   assignments: Assignment[];
 }
 
 export function WeeklyWorkload({ assignments }: WeeklyWorkloadProps) {
+  const { t, dateLocale } = useLanguage();
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
@@ -18,7 +20,7 @@ export function WeeklyWorkload({ assignments }: WeeklyWorkloadProps) {
 
   // Compute assignment count per day
   const dayStats = daysInWeek.map((day) => {
-    const dayName = format(day, "EEE").toUpperCase();
+    const dayName = format(day, "EEE", { locale: dateLocale }).toUpperCase();
     const count = assignments.filter((a) => {
       try {
         const dueDate = parseISO(a.due_date);
@@ -46,20 +48,20 @@ export function WeeklyWorkload({ assignments }: WeeklyWorkloadProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           <BarChart3 className="h-4 w-4 text-purple-400" />
-          <span>Weekly Workload</span>
+          <span>{t.dashboard.workload.title}</span>
         </div>
         <Link
           href="/calendar"
           className="text-xs font-medium text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
         >
-          <span>View Calendar</span>
+          <span>{t.dashboard.workload.viewCalendar}</span>
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
 
       {/* Subtitle */}
       <p className="text-[11px] text-zinc-500">
-        Number of assignments due each day
+        {t.dashboard.workload.subtitle}
       </p>
 
       {/* Vertical Bar Chart */}
@@ -118,7 +120,7 @@ export function WeeklyWorkload({ assignments }: WeeklyWorkloadProps) {
       {/* Footer Info */}
       <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-[#141414] text-xs text-zinc-400 font-medium">
         <Clock className="h-3.5 w-3.5 text-purple-400" />
-        <span>{totalThisWeek} assignments this week</span>
+        <span>{t.dashboard.workload.assignmentsThisWeek.replace("{count}", String(totalThisWeek))}</span>
       </div>
     </div>
   );

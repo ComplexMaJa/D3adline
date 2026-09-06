@@ -20,6 +20,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/types/database";
 import { useApp } from "./AppShell";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface SidebarProps {
   profile: Profile | null;
@@ -34,6 +35,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const supabase = createClient();
   const { courses, overdueCount, openCreateCourse } = useApp();
+  const { t } = useLanguage();
 
   // Close create dropdown when clicking outside
   React.useEffect(() => {
@@ -67,29 +69,29 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
 
   const navItems = [
     {
-      title: "Dashboard",
+      title: t.nav.dashboard,
       href: "/dashboard",
       icon: LayoutDashboard,
     },
     {
-      title: "Assignments",
+      title: t.nav.assignments,
       href: "/assignments",
       icon: CheckSquare,
       badge: totalAssignmentsCount > 0 ? totalAssignmentsCount : undefined,
     },
     {
-      title: "Courses",
+      title: t.nav.courses,
       href: "/courses",
       icon: BookOpen,
       badge: totalCoursesCount > 0 ? totalCoursesCount : undefined,
     },
     {
-      title: "Calendar",
+      title: t.nav.calendar,
       href: "/calendar",
       icon: CalendarIcon,
     },
     {
-      title: "Settings",
+      title: t.nav.settings,
       href: "/settings",
       icon: SettingsIcon,
     },
@@ -131,7 +133,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
           >
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              <span className="font-semibold text-xs">Create</span>
+              <span className="font-semibold text-xs">{t.nav.quickAction}</span>
             </div>
             <ChevronDown
               className={cn(
@@ -151,7 +153,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
                 className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-200 hover:bg-purple-950/40 hover:text-purple-300 transition-colors text-left font-medium"
               >
                 <CheckSquare className="h-3.5 w-3.5 text-purple-400" />
-                <span>New Assignment</span>
+                <span>{t.nav.newAssignment}</span>
               </button>
               <button
                 onClick={() => {
@@ -161,7 +163,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
                 className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-200 hover:bg-purple-950/40 hover:text-purple-300 transition-colors text-left font-medium"
               >
                 <BookOpen className="h-3.5 w-3.5 text-blue-400" />
-                <span>New Course</span>
+                <span>{t.nav.newCourse}</span>
               </button>
             </div>
           )}
@@ -233,10 +235,10 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-red-300 group-hover:text-red-200 transition-colors truncate">
-                  {overdueCount} Overdue
+                  {overdueCount} {t.nav.overdueCount}
                 </p>
                 <p className="text-[10px] text-zinc-500 truncate">
-                  Needs your attention
+                  {t.nav.overdueNotice}
                 </p>
               </div>
             </div>
@@ -274,7 +276,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
           <button
             onClick={handleSignOut}
             disabled={isLoggingOut}
-            title="Sign Out"
+            title={t.nav.signOut}
             className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
           >
             <LogOut className="h-4 w-4" />

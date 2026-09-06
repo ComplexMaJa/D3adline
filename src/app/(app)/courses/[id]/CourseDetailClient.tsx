@@ -13,6 +13,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useApp } from "@/components/layout/AppShell";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   ArrowLeft,
   BookOpen,
@@ -42,6 +43,7 @@ export function CourseDetailClient({
   initialAssignments,
   stats,
 }: CourseDetailClientProps) {
+  const { t, language } = useLanguage();
   const [assignments, setAssignments] = React.useState<Assignment[]>(initialAssignments);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = React.useState(false);
@@ -151,7 +153,7 @@ export function CourseDetailClient({
         className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        <span>Back to Courses</span>
+        <span>{t.courses.backToCourses}</span>
       </Link>
 
       {/* Course Banner Card */}
@@ -185,7 +187,7 @@ export function CourseDetailClient({
             {course.instructor && (
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <User className="h-3.5 w-3.5 text-zinc-500" />
-                <span>Instructor: {course.instructor}</span>
+                <span>{t.courses.instructorLabel}: {course.instructor}</span>
               </div>
             )}
 
@@ -204,7 +206,7 @@ export function CourseDetailClient({
               onClick={() => setIsEditDialogOpen(true)}
             >
               <Edit2 className="h-3.5 w-3.5" />
-              <span>Edit Course</span>
+              <span>{t.courses.editCourse}</span>
             </Button>
             <Button
               variant="danger"
@@ -212,14 +214,14 @@ export function CourseDetailClient({
               onClick={() => setIsDeleteDialogOpen(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span>Delete</span>
+              <span>{t.common.delete}</span>
             </Button>
             <Button
               size="sm"
               onClick={() => setIsAddAssignmentOpen(true)}
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Add Assignment</span>
+              <span>{t.courses.createAssignment}</span>
             </Button>
           </div>
         </div>
@@ -227,19 +229,21 @@ export function CourseDetailClient({
         {/* Progress meter */}
         <div className="mt-6 pt-5 border-t border-[#161616] grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="space-y-1">
-            <span className="text-[11px] text-zinc-500">Total Workload</span>
-            <p className="text-lg font-bold text-zinc-100">{stats.total} tasks</p>
+            <span className="text-[11px] text-zinc-500">{t.courses.totalWorkload}</span>
+            <p className="text-lg font-bold text-zinc-100">
+              {stats.total} {stats.total === 1 ? t.courses.tasksCountSingular : t.courses.tasksCount}
+            </p>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] text-emerald-500">Completed</span>
+            <span className="text-[11px] text-emerald-500">{t.courses.completed}</span>
             <p className="text-lg font-bold text-emerald-400">{stats.completed}</p>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] text-blue-400">In Progress</span>
+            <span className="text-[11px] text-blue-400">{t.courses.inProgress}</span>
             <p className="text-lg font-bold text-blue-400">{stats.inProgress}</p>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] text-purple-400">Completion</span>
+            <span className="text-[11px] text-purple-400">{t.courses.completion}</span>
             <p className="text-lg font-bold text-purple-300">
               {stats.completionPercentage}%
             </p>
@@ -260,7 +264,7 @@ export function CourseDetailClient({
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-purple-400" />
-            <span>Course Assignments ({assignments.length})</span>
+            <span>{t.courses.assignmentsTitle} ({assignments.length})</span>
           </h2>
           <Button
             size="sm"
@@ -268,21 +272,21 @@ export function CourseDetailClient({
             onClick={() => setIsAddAssignmentOpen(true)}
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>New Task</span>
+            <span>{t.courses.newTaskBtn}</span>
           </Button>
         </div>
 
         {assignments.length === 0 ? (
           <EmptyState
-            title="No assignments for this course"
-            description="You have not created any assignments or problem sets for this subject yet."
+            title={t.courses.noAssignmentsTitle}
+            description={t.courses.noAssignmentsDesc}
             action={
               <Button
                 size="sm"
                 onClick={() => setIsAddAssignmentOpen(true)}
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>Create Assignment</span>
+                <span>{t.courses.createAssignment}</span>
               </Button>
             }
           />
@@ -346,8 +350,9 @@ export function CourseDetailClient({
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteCourse}
-        title={`Delete ${course.name}?`}
-        description="This will permanently delete this course and all associated assignments. This action cannot be undone."
+        title={language === "id" ? `Hapus ${course.name}?` : `Delete ${course.name}?`}
+        description={t.courses.deleteCourseConfirmDesc}
+        confirmText={t.courses.deleteCourse}
         isLoading={isDeleting}
       />
 
@@ -356,8 +361,13 @@ export function CourseDetailClient({
         isOpen={!!assignmentToDelete}
         onClose={() => setAssignmentToDelete(null)}
         onConfirm={handleConfirmDeleteAssignment}
-        title="Delete Assignment?"
-        description={`Are you sure you want to delete "${assignmentToDelete?.title}"? This action cannot be undone.`}
+        title={t.courses.deleteAssignmentConfirmTitle}
+        description={
+          language === "id"
+            ? `Apakah Anda yakin ingin menghapus "${assignmentToDelete?.title}"? Tindakan ini tidak dapat dibatalkan.`
+            : `Are you sure you want to delete "${assignmentToDelete?.title}"? This action cannot be undone.`
+        }
+        confirmText={t.common.delete}
         isLoading={isDeletingAssignment}
       />
     </div>

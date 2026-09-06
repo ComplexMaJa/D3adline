@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Course } from "@/types/database";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   BookOpen,
   User,
@@ -22,6 +23,7 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
+  const { t } = useLanguage();
   const [showMenu, setShowMenu] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -100,7 +102,7 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white text-left"
                   >
                     <Edit2 className="h-3.5 w-3.5" />
-                    <span>Edit</span>
+                    <span>{t.common.edit}</span>
                   </button>
                 )}
                 {onDelete && (
@@ -112,7 +114,7 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-red-400 hover:bg-red-950/40 text-left"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
+                    <span>{t.common.delete}</span>
                   </button>
                 )}
               </div>
@@ -141,16 +143,16 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
         {/* Assignment Counts */}
         <div className="flex items-center justify-between text-xs text-zinc-400">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-zinc-300" title="Total Assignments">
+            <span className="flex items-center gap-1 text-zinc-300" title={t.courses.workload}>
               <BookOpen className="h-3.5 w-3.5 text-purple-400" />
-              <span>{total} {total === 1 ? 'task' : 'tasks'}</span>
+              <span>{total} {total === 1 ? t.courses.tasksCountSingular : t.courses.tasksCount}</span>
             </span>
-            <span className="flex items-center gap-1 text-emerald-400/90" title="Completed">
+            <span className="flex items-center gap-1 text-emerald-400/90" title={t.courses.completed}>
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>{completed}</span>
             </span>
             {pending > 0 && (
-              <span className="flex items-center gap-1 text-amber-400/90" title="Pending">
+              <span className="flex items-center gap-1 text-amber-400/90" title={t.courses.inProgress}>
                 <Clock className="h-3.5 w-3.5" />
                 <span>{pending}</span>
               </span>
@@ -166,7 +168,7 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
           href={`/courses/${course.id}`}
           className="flex items-center justify-between text-xs font-medium text-purple-400 hover:text-purple-300 transition-colors pt-1"
         >
-          <span>View Course Assignments</span>
+          <span>{t.courses.viewCourseAssignments}</span>
           <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>

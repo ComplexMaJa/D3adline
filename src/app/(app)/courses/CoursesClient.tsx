@@ -13,12 +13,14 @@ import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/components/layout/AppShell";
 import { Plus, Search, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CoursesClientProps {
   initialCourses: Course[];
 }
 
 export function CoursesClient({ initialCourses }: CoursesClientProps) {
+  const { t, language } = useLanguage();
   const [courses, setCourses] = React.useState<Course[]>(initialCourses);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [courseToEdit, setCourseToEdit] = React.useState<Course | null>(null);
@@ -76,15 +78,17 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
     }
   };
 
+  const isId = language === "id";
+
   return (
     <div className="space-y-6 animate-fade-in">
       <Header
-        title="Courses & Subjects"
-        description="Organize your university curriculum, track workload per subject, and manage instructors."
+        title={t.courses.title}
+        description={t.courses.description}
         action={
           <Button onClick={openCreateCourse} size="sm">
             <Plus className="h-4 w-4" />
-            <span>Create Course</span>
+            <span>{t.courses.newCourseBtn}</span>
           </Button>
         }
       />
@@ -93,15 +97,15 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#080808] p-3 rounded-xl border border-[#1A1A1A]">
         <div className="w-full sm:w-72">
           <Input
-            placeholder="Search courses by name or code..."
+            placeholder={t.courses.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             leftIcon={<Search className="h-4 w-4" />}
           />
         </div>
         <div className="text-xs text-zinc-400 self-end sm:self-center">
-          Showing <span className="font-semibold text-zinc-200">{filteredCourses.length}</span>{" "}
-          of {courses.length} courses
+          {t.courses.showing} <span className="font-semibold text-zinc-200">{filteredCourses.length}</span>{" "}
+          {t.courses.of} {courses.length} {t.courses.coursesUnit}
         </div>
       </div>
 
@@ -109,11 +113,11 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
       {filteredCourses.length === 0 ? (
         <EmptyState
           icon={<BookOpen className="h-6 w-6 text-purple-400" />}
-          title={searchQuery ? "No courses match your search" : "No courses created yet"}
+          title={searchQuery ? (isId ? "Tidak ada mata kuliah yang cocok" : "No courses match your search") : t.courses.emptyTitle}
           description={
             searchQuery
-              ? `No subjects matching "${searchQuery}". Try a different keyword.`
-              : "Create your subjects to group assignments and monitor completion rates."
+              ? (isId ? `Tidak ditemukan mata kuliah "${searchQuery}". Silakan coba kata kunci lain.` : `No subjects matching "${searchQuery}". Try a different keyword.`)
+              : t.courses.emptyDescription
           }
           action={
             searchQuery ? (
@@ -122,12 +126,12 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
                 size="sm"
                 onClick={() => setSearchQuery("")}
               >
-                Clear Search
+                {t.courses.clearSearch}
               </Button>
             ) : (
               <Button size="sm" onClick={openCreateCourse}>
                 <Plus className="h-4 w-4" />
-                <span>Create First Course</span>
+                <span>{t.courses.createAssignment}</span>
               </Button>
             )
           }
@@ -164,9 +168,13 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
         isOpen={!!courseToDelete}
         onClose={() => setCourseToDelete(null)}
         onConfirm={handleConfirmDelete}
-        title="Delete Course?"
-        description={`Are you sure you want to delete "${courseToDelete?.name}"? All assignments belonging to this course will also be deleted.`}
-        confirmText="Delete Course"
+        title={t.courses.deleteCourseConfirmTitle}
+        description={
+          isId
+            ? `Apakah Anda yakin ingin menghapus "${courseToDelete?.name}"? Seluruh tugas yang tergabung dalam mata kuliah ini juga akan dihapus.`
+            : `Are you sure you want to delete "${courseToDelete?.name}"? All assignments belonging to this course will also be deleted.`
+        }
+        confirmText={t.courses.deleteCourse}
         isLoading={isDeleting}
       />
     </div>

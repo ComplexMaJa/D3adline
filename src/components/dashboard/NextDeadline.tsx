@@ -6,12 +6,14 @@ import { Clock, ArrowRight, CheckCircle } from "lucide-react";
 import { Assignment } from "@/types/database";
 import { formatDeadline } from "@/lib/deadline-utils";
 import { parseISO } from "date-fns";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface NextDeadlineProps {
   assignment: Assignment | null;
 }
 
 export function NextDeadline({ assignment }: NextDeadlineProps) {
+  const { t, language } = useLanguage();
   const [timeLeft, setTimeLeft] = React.useState({
     hours: "00",
     minutes: "00",
@@ -69,24 +71,26 @@ export function NextDeadline({ assignment }: NextDeadlineProps) {
       <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 flex flex-col justify-between h-full space-y-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
           <Clock className="h-4 w-4 text-purple-400" />
-          <span>Next Deadline</span>
+          <span>{t.dashboard.countdown.nextDeadline}</span>
         </div>
         <div className="py-8 text-center space-y-2">
           <div className="h-10 w-10 mx-auto rounded-full bg-purple-950/60 border border-purple-800/40 flex items-center justify-center text-purple-400">
             <CheckCircle className="h-5 w-5" />
           </div>
-          <h4 className="text-sm font-semibold text-white">No upcoming deadlines</h4>
+          <h4 className="text-sm font-semibold text-white">{t.dashboard.countdown.noUpcoming}</h4>
           <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-            Take a breather or plan ahead for upcoming courses.
+            {t.dashboard.countdown.noUpcomingSub}
           </p>
         </div>
       </div>
     );
   }
 
-  const deadlineInfo = formatDeadline(assignment.due_date, assignment.due_time);
+  const deadlineInfo = formatDeadline(assignment.due_date, assignment.due_time, assignment.status, language);
   const courseCode = assignment.course?.code || assignment.course?.name || "GEN";
-  const priority = (assignment.priority || "Medium").toUpperCase();
+  const priorityRaw = assignment.priority || "Medium";
+  const priority = priorityRaw.toUpperCase();
+  const priorityText = priorityRaw === "High" ? t.priorities.high : priorityRaw === "Low" ? t.priorities.low : t.priorities.medium;
 
   return (
     <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 flex flex-col justify-between h-full space-y-4 hover:border-[#222222] transition-colors relative overflow-hidden group">
@@ -94,7 +98,7 @@ export function NextDeadline({ assignment }: NextDeadlineProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           <Clock className="h-4 w-4 text-purple-400" />
-          <span>Next Deadline</span>
+          <span>{t.dashboard.countdown.nextDeadline}</span>
         </div>
       </div>
 
@@ -113,7 +117,7 @@ export function NextDeadline({ assignment }: NextDeadlineProps) {
                 : "bg-blue-950/80 text-blue-300 border-blue-800/50"
             }`}
           >
-            {priority}
+            {priorityText}
           </span>
         </div>
 
@@ -145,9 +149,9 @@ export function NextDeadline({ assignment }: NextDeadlineProps) {
           </span>
         </div>
         <div className="flex items-center justify-center gap-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest pt-0.5">
-          <span>Hours</span>
-          <span>Mins</span>
-          <span>Secs</span>
+          <span>{t.dashboard.countdown.hours}</span>
+          <span>{t.dashboard.countdown.mins}</span>
+          <span>{t.dashboard.countdown.secs}</span>
         </div>
       </div>
 
@@ -156,7 +160,7 @@ export function NextDeadline({ assignment }: NextDeadlineProps) {
         href={`/assignments/${assignment.id}`}
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#121212] hover:bg-[#1A1A1A] border border-[#222222] hover:border-[#333333] text-zinc-200 text-xs font-semibold transition-all duration-200 active:scale-[0.98]"
       >
-        <span>View Assignment</span>
+        <span>{t.dashboard.countdown.viewAssignment}</span>
         <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>

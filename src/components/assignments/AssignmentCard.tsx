@@ -23,6 +23,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface AssignmentCardProps {
   assignment: Assignment;
@@ -41,12 +42,14 @@ export function AssignmentCard({
 }: AssignmentCardProps) {
   const [showMenu, setShowMenu] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
 
   const courseData = assignment.course || course;
   const deadlineInfo = getDeadlineInfo(
     assignment.due_date,
     assignment.due_time,
-    assignment.status
+    assignment.status,
+    language
   );
 
   const isCompleted = assignment.status === "Completed" || assignment.progress === 100;
@@ -121,7 +124,7 @@ export function AssignmentCard({
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  <span>View Details</span>
+                  <span>{t.common.viewDetails}</span>
                 </Link>
                 {onEdit && (
                   <button
@@ -132,7 +135,7 @@ export function AssignmentCard({
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white text-left"
                   >
                     <Edit2 className="h-3.5 w-3.5" />
-                    <span>Edit</span>
+                    <span>{t.common.edit}</span>
                   </button>
                 )}
                 {onDelete && (
@@ -144,7 +147,7 @@ export function AssignmentCard({
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-red-400 hover:bg-red-950/40 text-left"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
+                    <span>{t.common.delete}</span>
                   </button>
                 )}
               </div>
@@ -216,7 +219,11 @@ export function AssignmentCard({
               getPriorityBadgeStyle(assignment.priority)
             )}
           >
-            {assignment.priority}
+            {assignment.priority === "High"
+              ? t.priorities.high
+              : assignment.priority === "Medium"
+              ? t.priorities.medium
+              : t.priorities.low}
           </span>
         </div>
 
@@ -229,7 +236,13 @@ export function AssignmentCard({
                 getStatusBadgeStyle(assignment.status)
               )}
             >
-              {assignment.status}
+              {assignment.status === "Completed"
+                ? t.statuses.completed
+                : assignment.status === "In Progress"
+                ? t.statuses.inProgress
+                : assignment.status === "Overdue"
+                ? t.statuses.overdue
+                : t.statuses.notStarted}
             </span>
             <span className="font-semibold text-zinc-300">{assignment.progress}%</span>
           </div>

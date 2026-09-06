@@ -1,8 +1,7 @@
-"use client";
-
 import * as React from "react";
 import { format } from "date-fns";
 import { Calendar, Bell, Plus, ChevronDown } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface DashboardHeaderProps {
   displayName: string;
@@ -18,14 +17,15 @@ export function DashboardHeader({
   const [currentDate, setCurrentDate] = React.useState<string>("");
   const [showDropdown, setShowDropdown] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { t, dateLocale, language } = useLanguage();
 
   React.useEffect(() => {
-    setCurrentDate(format(new Date(), "EEEE, MMM d, yyyy"));
+    setCurrentDate(format(new Date(), "EEEE, d MMMM yyyy", { locale: dateLocale }));
     const interval = setInterval(() => {
-      setCurrentDate(format(new Date(), "EEEE, MMM d, yyyy"));
+      setCurrentDate(format(new Date(), "EEEE, d MMMM yyyy", { locale: dateLocale }));
     }, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [dateLocale]);
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -39,6 +39,12 @@ export function DashboardHeader({
 
   const getGreeting = () => {
     const hour = new Date().getHours();
+    if (language === "id") {
+      if (hour < 11) return "Selamat pagi";
+      if (hour < 15) return "Selamat siang";
+      if (hour < 19) return "Selamat sore";
+      return "Selamat malam";
+    }
     if (hour < 12) return "Good morning";
     if (hour < 18) return "Good afternoon";
     return "Good evening";
@@ -53,7 +59,7 @@ export function DashboardHeader({
           <span className="text-2xl animate-bounce">👋</span>
         </h1>
         <p className="mt-1 text-xs sm:text-sm text-zinc-400">
-          Here&apos;s what&apos;s happening with your academic journey.
+          {t.dashboard.welcomeSub}
         </p>
       </div>
 
@@ -81,7 +87,7 @@ export function DashboardHeader({
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-purple-glow-sm hover:shadow-purple-glow transition-all duration-150 active:scale-[0.98]"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>Create Assignment</span>
+            <span>{t.assignments.newAssignmentBtn}</span>
             <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${showDropdown ? "rotate-180" : ""}`} />
           </button>
 
@@ -95,7 +101,7 @@ export function DashboardHeader({
                 className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-zinc-200 hover:bg-purple-950/40 hover:text-purple-300 text-left transition-colors font-medium"
               >
                 <Plus className="h-3.5 w-3.5 text-purple-400" />
-                <span>New Assignment</span>
+                <span>{t.nav.newAssignment}</span>
               </button>
               {onCreateCourse && (
                 <button
@@ -106,7 +112,7 @@ export function DashboardHeader({
                   className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-zinc-200 hover:bg-purple-950/40 hover:text-purple-300 text-left transition-colors font-medium"
                 >
                   <Plus className="h-3.5 w-3.5 text-blue-400" />
-                  <span>New Course</span>
+                  <span>{t.nav.newCourse}</span>
                 </button>
               )}
             </div>

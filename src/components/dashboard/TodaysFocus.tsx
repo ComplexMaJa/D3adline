@@ -5,35 +5,40 @@ import Link from "next/link";
 import { Target, ArrowRight, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { Assignment } from "@/types/database";
 import { formatDeadline } from "@/lib/deadline-utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface TodaysFocusProps {
   assignment: Assignment | null;
 }
 
 export function TodaysFocus({ assignment }: TodaysFocusProps) {
+  const { t, language } = useLanguage();
+
   if (!assignment) {
     return (
       <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 flex flex-col justify-between h-full space-y-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-purple-400 uppercase tracking-wider">
           <Target className="h-4 w-4" />
-          <span>Today&apos;s Focus</span>
+          <span>{t.dashboard.focus.title}</span>
         </div>
         <div className="py-8 text-center space-y-2">
           <div className="h-10 w-10 mx-auto rounded-full bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400">
             <CheckCircle className="h-5 w-5" />
           </div>
-          <h4 className="text-sm font-semibold text-white">You&apos;re all caught up!</h4>
+          <h4 className="text-sm font-semibold text-white">{t.dashboard.focus.allCaughtUp}</h4>
           <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-            No pending assignments need immediate attention right now. Great job!
+            {t.dashboard.focus.noFocusSub}
           </p>
         </div>
       </div>
     );
   }
 
-  const deadlineInfo = formatDeadline(assignment.due_date, assignment.due_time);
+  const deadlineInfo = formatDeadline(assignment.due_date, assignment.due_time, assignment.status, language);
   const courseCode = assignment.course?.code || assignment.course?.name || "GEN";
-  const priority = (assignment.priority || "Medium").toUpperCase();
+  const priorityRaw = assignment.priority || "Medium";
+  const priority = priorityRaw.toUpperCase();
+  const priorityText = priorityRaw === "High" ? t.priorities.high : priorityRaw === "Low" ? t.priorities.low : t.priorities.medium;
   const progress = assignment.progress || 0;
 
   return (
@@ -42,7 +47,7 @@ export function TodaysFocus({ assignment }: TodaysFocusProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-purple-400 uppercase tracking-wider">
           <Target className="h-4 w-4" />
-          <span>Today&apos;s Focus</span>
+          <span>{t.dashboard.focus.title}</span>
         </div>
       </div>
 
@@ -61,7 +66,7 @@ export function TodaysFocus({ assignment }: TodaysFocusProps) {
                 : "bg-blue-950/80 text-blue-300 border-blue-800/50"
             }`}
           >
-            {priority}
+            {priorityText}
           </span>
         </div>
 
@@ -118,7 +123,7 @@ export function TodaysFocus({ assignment }: TodaysFocusProps) {
         href={`/assignments/${assignment.id}`}
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-purple-glow-sm hover:shadow-purple-glow transition-all duration-200 active:scale-[0.98]"
       >
-        <span>Continue Working</span>
+        <span>{t.dashboard.focus.continueWorking}</span>
         <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>

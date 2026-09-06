@@ -20,6 +20,7 @@ import { UpcomingDeadlinesSection } from "@/components/dashboard/UpcomingDeadlin
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { StreakCard } from "@/components/dashboard/StreakCard";
 import { parseISO, isPast, isToday, differenceInCalendarDays } from "date-fns";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface DashboardClientProps {
   initialAssignments: Assignment[];
@@ -32,6 +33,7 @@ export function DashboardClient({
   initialCourses,
   initialMetrics,
 }: DashboardClientProps) {
+  const { t } = useLanguage();
   const [assignments, setAssignments] = React.useState<Assignment[]>(initialAssignments);
   const [metrics, setMetrics] = React.useState<DashboardMetrics>(initialMetrics);
   const [isSeeding, setIsSeeding] = React.useState(false);
@@ -132,13 +134,13 @@ export function DashboardClient({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-purple-300 text-xs font-semibold uppercase tracking-wider">
               <Sparkles className="h-4 w-4 text-purple-400" />
-              <span>Quick Start Available</span>
+              <span>{t.dashboard.quickStart.badge}</span>
             </div>
             <h3 className="text-sm font-bold text-white">
-              Populate Demo University Courses & Assignments
+              {t.dashboard.quickStart.title}
             </h3>
             <p className="text-xs text-zinc-400 max-w-xl">
-              Seed realistic courses like Data Structures, Database Systems, and Calculus II with due dates and problem sets to explore the app instantly.
+              {t.dashboard.quickStart.description}
             </p>
           </div>
           <Button
@@ -148,7 +150,7 @@ export function DashboardClient({
             className="shrink-0"
           >
             <Database className="h-3.5 w-3.5" />
-            <span>Seed Demo Data</span>
+            <span>{isSeeding ? t.dashboard.quickStart.seeding : t.dashboard.quickStart.button}</span>
           </Button>
         </div>
       )}

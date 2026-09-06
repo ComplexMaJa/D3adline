@@ -22,7 +22,10 @@ import {
   AlertCircle,
   Shield,
   Palette,
+  Globe,
 } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { cn } from "@/lib/utils";
 
 interface SettingsClientProps {
   initialProfile: Profile;
@@ -47,6 +50,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
   const [isSigningOut, setIsSigningOut] = React.useState(false);
 
   const { refreshCourses } = useApp();
+  const { language, setLanguage, t } = useLanguage();
   const supabase = createClient();
   const router = useRouter();
 
@@ -99,17 +103,13 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
     setSeedSuccess(null);
 
     try {
-      const result = await seedSampleData();
+      await seedSampleData();
+      setSeedSuccess(t.settings.demoSuccess);
       await refreshCourses();
-      setSeedSuccess(
-        `Created ${result.coursesCount} courses and ${result.assignmentsCount} assignments!`
-      );
-      setTimeout(() => setSeedSuccess(null), 5000);
       router.refresh();
+      setTimeout(() => setSeedSuccess(null), 4000);
     } catch (err: unknown) {
-      console.error("Error seeding:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to seed demo data";
-      setSaveError(errorMessage);
+      console.error("Error seeding sample data:", err);
     } finally {
       setIsSeeding(false);
     }
@@ -123,7 +123,6 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
       router.refresh();
     } catch (err) {
       console.error("Error signing out:", err);
-    } finally {
       setIsSigningOut(false);
     }
   };
@@ -131,8 +130,8 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
   return (
     <div className="space-y-6 max-w-4xl animate-fade-in">
       <Header
-        title="Account & Settings"
-        description="Manage your student profile, workspace preferences, and application data."
+        title={t.settings.title}
+        description={t.settings.description}
       />
 
       {/* Profile Card */}
@@ -140,10 +139,10 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base text-zinc-100">
             <User className="h-4 w-4 text-purple-400" />
-            <span>Student Profile</span>
+            <span>{t.settings.profileTitle}</span>
           </CardTitle>
           <CardDescription>
-            Your display name and identity across courses
+            {t.settings.profileDescription}
           </CardDescription>
         </CardHeader>
 
@@ -152,7 +151,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
             {saveSuccess && (
               <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-xs text-emerald-400 flex items-center gap-2">
                 <Check className="h-4 w-4" />
-                <span>Profile updated successfully!</span>
+                <span>{t.settings.profileUpdated}</span>
               </div>
             )}
 
@@ -166,19 +165,19 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Display Name
+                  {t.settings.displayName}
                 </label>
                 <Input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your Name"
+                  placeholder={t.settings.displayNamePlaceholder}
                   leftIcon={<User className="h-4 w-4" />}
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Email Address
+                  {t.settings.emailAddress}
                 </label>
                 <Input
                   value={profile.email || ""}
@@ -191,7 +190,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
 
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Avatar Image URL (Optional)
+                {t.settings.avatarUrl}
               </label>
               <Input
                 value={avatarUrl}
@@ -202,10 +201,80 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
 
             <div className="flex justify-end pt-2">
               <Button type="submit" isLoading={isSaving} size="sm">
-                <span>Save Profile</span>
+                <span>{t.settings.saveProfileBtn}</span>
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Language & Regional Settings */}
+      <Card className="border-[#1E1E1E] bg-[#090909]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base text-zinc-100">
+            <Globe className="h-4 w-4 text-purple-400" />
+            <span>{t.settings.languageTitle}</span>
+          </CardTitle>
+          <CardDescription>
+            {t.settings.languageDescription}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* English Option */}
+            <button
+              type="button"
+              onClick={() => setLanguage("en")}
+              className={cn(
+                "flex items-center justify-between p-3.5 rounded-xl border text-left transition-all",
+                language === "en"
+                  ? "border-purple-600/80 bg-purple-950/20 text-white shadow-purple-glow-sm"
+                  : "border-[#1E1E1E] bg-[#050505] text-zinc-300 hover:border-[#2C2C2C] hover:bg-[#0A0A0A]"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🇬🇧</span>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-100">
+                    {t.settings.languageEnName}
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    {t.settings.languageEnDesc}
+                  </p>
+                </div>
+              </div>
+              {language === "en" && (
+                <span className="h-2 w-2 rounded-full bg-purple-400 shadow-sm" />
+              )}
+            </button>
+
+            {/* Bahasa Indonesia Option */}
+            <button
+              type="button"
+              onClick={() => setLanguage("id")}
+              className={cn(
+                "flex items-center justify-between p-3.5 rounded-xl border text-left transition-all",
+                language === "id"
+                  ? "border-purple-600/80 bg-purple-950/20 text-white shadow-purple-glow-sm"
+                  : "border-[#1E1E1E] bg-[#050505] text-zinc-300 hover:border-[#2C2C2C] hover:bg-[#0A0A0A]"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🇮🇩</span>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-100">
+                    {t.settings.languageIdName}
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    {t.settings.languageIdDesc}
+                  </p>
+                </div>
+              </div>
+              {language === "id" && (
+                <span className="h-2 w-2 rounded-full bg-purple-400 shadow-sm" />
+              )}
+            </button>
+          </div>
         </CardContent>
       </Card>
 
@@ -214,10 +283,10 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base text-zinc-100">
             <Palette className="h-4 w-4 text-purple-400" />
-            <span>Aesthetics & Theme</span>
+            <span>{t.settings.themeTitle}</span>
           </CardTitle>
           <CardDescription>
-            System visual identity and AMOLED optimization
+            {t.settings.themeDescription}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -226,10 +295,10 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
               <Moon className="h-4 w-4 text-purple-400" />
               <div>
                 <p className="text-xs font-semibold text-zinc-200">
-                  AMOLED Deep Black Theme
+                  {t.settings.themeAmoledName}
                 </p>
                 <p className="text-[11px] text-zinc-500">
-                  True black (#000000) background with high contrast purple accents
+                  {t.settings.themeAmoledDesc}
                 </p>
               </div>
             </div>
@@ -245,10 +314,10 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base text-zinc-100">
             <Database className="h-4 w-4 text-purple-400" />
-            <span>Demo Data & Testing</span>
+            <span>{t.settings.demoTitle}</span>
           </CardTitle>
           <CardDescription>
-            Bootstrap realistic university courses and assignments for testing
+            {t.settings.demoDescription}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -262,10 +331,10 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-[#1C1C1C] bg-[#050505]">
             <div>
               <p className="text-xs font-semibold text-zinc-200">
-                Populate Realistic Sample Courses
+                {t.settings.seedDemoBtn}
               </p>
               <p className="text-[11px] text-zinc-500">
-                Adds Data Structures, Database Systems, Software Engineering, and Calculus II with real deadlines.
+                {t.settings.demoWarning}
               </p>
             </div>
             <Button
@@ -276,7 +345,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
               className="shrink-0"
             >
               <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-              <span>Seed Data</span>
+              <span>{isSeeding ? t.settings.seedingDemo : t.settings.seedDemoBtn}</span>
             </Button>
           </div>
         </CardContent>
@@ -287,19 +356,19 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base text-zinc-100">
             <Shield className="h-4 w-4 text-purple-400" />
-            <span>Account Security</span>
+            <span>{t.settings.signOutTitle}</span>
           </CardTitle>
           <CardDescription>
-            Session management and account authentication
+            {t.settings.signOutTitle}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-zinc-200">
-              Sign Out of Session
+              {t.settings.signOutBtn}
             </p>
             <p className="text-[11px] text-zinc-500">
-              Disconnect this browser session from Deadline
+              {t.nav.signOut}
             </p>
           </div>
           <Button
@@ -308,7 +377,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
             onClick={() => setIsSignOutModalOpen(true)}
           >
             <LogOut className="h-3.5 w-3.5" />
-            <span>Sign Out</span>
+            <span>{t.settings.signOutBtn}</span>
           </Button>
         </CardContent>
       </Card>
@@ -318,9 +387,9 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
         isOpen={isSignOutModalOpen}
         onClose={() => setIsSignOutModalOpen(false)}
         onConfirm={handleSignOut}
-        title="Sign Out?"
-        description="Are you sure you want to sign out of your Deadline account?"
-        confirmText="Sign Out"
+        title={`${t.settings.signOutBtn}?`}
+        description={t.settings.signOutTitle}
+        confirmText={t.settings.signOutBtn}
         variant="danger"
         isLoading={isSigningOut}
       />

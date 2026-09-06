@@ -41,6 +41,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CalendarClientProps {
   initialAssignments: Assignment[];
@@ -57,6 +58,7 @@ export function CalendarClient({
   const [isDayModalOpen, setIsDayModalOpen] = React.useState(false);
 
   const { openCreateAssignment } = useApp();
+  const { t, dateLocale, language } = useLanguage();
 
   const assignments = initialAssignments;
 
@@ -120,12 +122,12 @@ export function CalendarClient({
   return (
     <div className="space-y-6 animate-fade-in">
       <Header
-        title="Deadline Calendar"
-        description="Visualize your academic timeline and upcoming submission dates."
+        title={t.calendar.title}
+        description={t.calendar.description}
         action={
           <Button onClick={() => openCreateAssignment()} size="sm">
             <Plus className="h-4 w-4" />
-            <span>New Assignment</span>
+            <span>{t.assignments.newAssignmentBtn}</span>
           </Button>
         }
       />
@@ -135,7 +137,15 @@ export function CalendarClient({
         {/* Navigation & Current Month */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
           <h2 className="text-base sm:text-lg font-bold text-zinc-100 min-w-[160px]">
-            {format(currentDate, viewMode === "month" ? "MMMM yyyy" : "'Week of' MMM d, yyyy")}
+            {format(
+              currentDate,
+              viewMode === "month"
+                ? "MMMM yyyy"
+                : language === "id"
+                ? "'Minggu dari' d MMM yyyy"
+                : "'Week of' MMM d, yyyy",
+              { locale: dateLocale }
+            )}
           </h2>
 
           <div className="flex items-center gap-1">
@@ -152,7 +162,7 @@ export function CalendarClient({
               onClick={goToToday}
               className="text-xs h-8 px-2.5"
             >
-              Today
+              {t.calendar.todayBtn}
             </Button>
             <button
               onClick={nextPeriod}
@@ -175,7 +185,7 @@ export function CalendarClient({
                 : "text-zinc-500 hover:text-zinc-300"
             )}
           >
-            Month View
+            {t.calendar.monthView}
           </button>
           <button
             onClick={() => setViewMode("week")}
@@ -186,7 +196,7 @@ export function CalendarClient({
                 : "text-zinc-500 hover:text-zinc-300"
             )}
           >
-            Week View
+            {t.calendar.weekView}
           </button>
         </div>
       </div>
@@ -195,13 +205,13 @@ export function CalendarClient({
       <div className="rounded-xl border border-[#1A1A1A] bg-[#060606] overflow-hidden">
         {/* Days of week header */}
         <div className="grid grid-cols-7 border-b border-[#1A1A1A] bg-[#0A0A0A] text-center text-xs font-semibold text-zinc-400 py-2.5">
-          <div>Mon</div>
-          <div>Tue</div>
-          <div>Wed</div>
-          <div>Thu</div>
-          <div>Fri</div>
-          <div className="text-zinc-500">Sat</div>
-          <div className="text-zinc-500">Sun</div>
+          <div>{t.calendar.weekdays.mon}</div>
+          <div>{t.calendar.weekdays.tue}</div>
+          <div>{t.calendar.weekdays.wed}</div>
+          <div>{t.calendar.weekdays.thu}</div>
+          <div>{t.calendar.weekdays.fri}</div>
+          <div className="text-zinc-500">{t.calendar.weekdays.sat}</div>
+          <div className="text-zinc-500">{t.calendar.weekdays.sun}</div>
         </div>
 
         {/* Days cells */}
@@ -298,29 +308,28 @@ export function CalendarClient({
         onClose={() => setIsDayModalOpen(false)}
         title={
           selectedDay
-            ? format(selectedDay, "EEEE, MMMM d, yyyy")
-            : "Day Schedule"
+            ? `${t.calendar.dayModalTitle} ${format(selectedDay, "EEEE, d MMMM yyyy", { locale: dateLocale })}`
+            : t.calendar.title
         }
         description={
           selectedDayAssignments.length > 0
-            ? `${selectedDayAssignments.length} assignment${
-                selectedDayAssignments.length > 1 ? "s" : ""
-              } due on this date`
-            : "No deadlines scheduled for this day"
+            ? `${selectedDayAssignments.length} ${t.common.tasks}`
+            : t.calendar.noTasksForDay
         }
         maxWidth="md"
       >
         <div className="space-y-3">
           {selectedDayAssignments.length === 0 ? (
             <div className="p-6 text-center text-xs text-zinc-500">
-              No assignments or problem sets due on this day.
+              {t.calendar.noTasksForDay}
             </div>
           ) : (
             selectedDayAssignments.map((assignment) => {
               const deadline = getDeadlineInfo(
                 assignment.due_date,
                 assignment.due_time,
-                assignment.status
+                assignment.status,
+                language
               );
               const isDone = assignment.status === "Completed" || assignment.progress === 100;
 
@@ -366,14 +375,14 @@ export function CalendarClient({
                       <Clock className="h-3 w-3 text-purple-400" />
                       <span>{deadline.formattedTime}</span>
                       <span>·</span>
-                      <span>{assignment.progress}% complete</span>
+                      <span>{assignment.progress}% {t.common.completed.toLowerCase()}</span>
                     </div>
                   </div>
 
                   <Link
                     href={`/assignments/${assignment.id}`}
                     className="p-2 rounded-lg bg-[#141414] text-zinc-400 hover:text-white hover:bg-[#1E1E1E] transition-colors"
-                    title="View Details"
+                    title={t.common.viewDetails}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Link>
@@ -391,7 +400,7 @@ export function CalendarClient({
               }}
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Add Deadline for this Date</span>
+              <span>{t.assignments.newAssignmentBtn}</span>
             </Button>
           </div>
         </div>

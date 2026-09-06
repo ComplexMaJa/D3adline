@@ -13,46 +13,49 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 interface MobileNavProps {
   onOpenCreateAssignment?: () => void;
 }
 
-const mobileItems = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Assignments",
-    href: "/assignments",
-    icon: CheckSquare,
-  },
-  {
-    title: "Courses",
-    href: "/courses",
-    icon: BookOpen,
-  },
-  {
-    title: "Calendar",
-    href: "/calendar",
-    icon: CalendarIcon,
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: SettingsIcon,
-  },
-];
-
 export function MobileNav({ onOpenCreateAssignment }: MobileNavProps) {
   const pathname = usePathname();
+  const { t } = useLanguage();
+
+  const mobileItems = [
+    {
+      title: t.nav.dashboard,
+      href: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: t.nav.assignments,
+      href: "/assignments",
+      icon: CheckSquare,
+    },
+    {
+      title: t.nav.courses,
+      href: "/courses",
+      icon: BookOpen,
+    },
+    {
+      title: t.nav.calendar,
+      href: "/calendar",
+      icon: CalendarIcon,
+    },
+    {
+      title: t.nav.settings,
+      href: "/settings",
+      icon: SettingsIcon,
+    },
+  ];
 
   return (
     <>
       {/* Mobile Top Header */}
-      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-[#1A1A1A] bg-[#050505]/95 px-4 py-3 backdrop-blur-md">
+      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-[#1A1A1A] bg-[#050505]/95 px-4 py-2.5 backdrop-blur-md">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600/20 border border-purple-500/40 text-purple-400">
             <Sparkles className="h-3.5 w-3.5" />
@@ -61,15 +64,18 @@ export function MobileNav({ onOpenCreateAssignment }: MobileNavProps) {
             Deadline
           </span>
         </Link>
-        {onOpenCreateAssignment && (
-          <button
-            onClick={onOpenCreateAssignment}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-2.5 py-1.5 shadow-purple-glow-sm"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>New</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          {onOpenCreateAssignment && (
+            <button
+              onClick={onOpenCreateAssignment}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-2.5 py-1.5 shadow-purple-glow-sm"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{t.common.create}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Mobile Bottom Navigation */}

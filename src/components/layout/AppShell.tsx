@@ -9,6 +9,7 @@ import { Profile, Course, Assignment } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { getDeadlineInfo } from "@/lib/deadline-utils";
 import { useRouter } from "next/navigation";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -166,55 +167,57 @@ export function AppShell({
   };
 
   return (
-    <AppContext.Provider
-      value={{
-        profile,
-        courses,
-        overdueCount: totalOverdueCount,
-        refreshCourses,
-        openCreateAssignment,
-        openCreateCourse,
-      }}
-    >
-      <div className="min-h-screen bg-black text-[#F5F5F5] flex flex-col md:flex-row">
-        {/* Desktop Sidebar */}
-        <Sidebar
-          profile={profile}
-          onOpenCreateAssignment={() => openCreateAssignment()}
-        />
+    <LanguageProvider>
+      <AppContext.Provider
+        value={{
+          profile,
+          courses,
+          overdueCount: totalOverdueCount,
+          refreshCourses,
+          openCreateAssignment,
+          openCreateCourse,
+        }}
+      >
+        <div className="min-h-screen bg-black text-[#F5F5F5] flex flex-col md:flex-row">
+          {/* Desktop Sidebar */}
+          <Sidebar
+            profile={profile}
+            onOpenCreateAssignment={() => openCreateAssignment()}
+          />
 
-        {/* Mobile Top and Bottom Navigation */}
-        <MobileNav onOpenCreateAssignment={() => openCreateAssignment()} />
+          {/* Mobile Top and Bottom Navigation */}
+          <MobileNav onOpenCreateAssignment={() => openCreateAssignment()} />
 
-        {/* Main Content Area */}
-        <main className="flex-1 md:pl-64 min-h-screen flex flex-col pb-20 md:pb-8">
-          <div className="flex-1 p-4 sm:p-6 lg:p-7 max-w-[1800px] w-full mx-auto animate-fade-in">
-            {children}
-          </div>
-        </main>
+          {/* Main Content Area */}
+          <main className="flex-1 md:pl-64 min-h-screen flex flex-col pb-20 md:pb-8">
+            <div className="flex-1 p-4 sm:p-6 lg:p-7 max-w-[1800px] w-full mx-auto animate-fade-in">
+              {children}
+            </div>
+          </main>
 
-        {/* Global Dialogs */}
-        <AssignmentDialog
-          isOpen={isAssignmentModalOpen}
-          onClose={() => {
-            setIsAssignmentModalOpen(false);
-            setSelectedCourseId(undefined);
-          }}
-          courses={courses}
-          initialCourseId={selectedCourseId}
-          onSaved={handleAssignmentSaved}
-          onOpenCreateCourse={() => {
-            setIsAssignmentModalOpen(false);
-            setIsCourseModalOpen(true);
-          }}
-        />
+          {/* Global Dialogs */}
+          <AssignmentDialog
+            isOpen={isAssignmentModalOpen}
+            onClose={() => {
+              setIsAssignmentModalOpen(false);
+              setSelectedCourseId(undefined);
+            }}
+            courses={courses}
+            initialCourseId={selectedCourseId}
+            onSaved={handleAssignmentSaved}
+            onOpenCreateCourse={() => {
+              setIsAssignmentModalOpen(false);
+              setIsCourseModalOpen(true);
+            }}
+          />
 
-        <CourseDialog
-          isOpen={isCourseModalOpen}
-          onClose={() => setIsCourseModalOpen(false)}
-          onSaved={handleCourseSaved}
-        />
-      </div>
-    </AppContext.Provider>
+          <CourseDialog
+            isOpen={isCourseModalOpen}
+            onClose={() => setIsCourseModalOpen(false)}
+            onSaved={handleCourseSaved}
+          />
+        </div>
+      </AppContext.Provider>
+    </LanguageProvider>
   );
 }

@@ -10,6 +10,7 @@ import { Assignment, Course, AssignmentPriority, AssignmentStatus } from "@/type
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
 import { Calendar, Clock, BookOpen, AlertCircle, Plus } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface AssignmentDialogProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export function AssignmentDialog({
   onSaved,
   onOpenCreateCourse,
 }: AssignmentDialogProps) {
+  const { t } = useLanguage();
   const isEditing = !!assignmentToEdit;
   const [title, setTitle] = React.useState("");
   const [courseId, setCourseId] = React.useState("");
@@ -100,15 +102,15 @@ export function AssignmentDialog({
     const newErrors: { [key: string]: string } = {};
 
     if (!title.trim()) {
-      newErrors.title = "Assignment title is required";
+      newErrors.title = t.dialogs.assignment.errors.titleRequired;
     }
 
     if (!courseId) {
-      newErrors.courseId = "Please select a course";
+      newErrors.courseId = t.dialogs.assignment.errors.courseRequired;
     }
 
     if (!dueDate) {
-      newErrors.dueDate = "Due date is required";
+      newErrors.dueDate = t.dialogs.assignment.errors.dateRequired;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -125,7 +127,7 @@ export function AssignmentDialog({
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setErrors({ form: "You must be signed in to manage assignments." });
+        setErrors({ form: t.dialogs.assignment.errors.authRequired });
         setIsLoading(false);
         return;
       }
@@ -176,7 +178,7 @@ export function AssignmentDialog({
       onClose();
     } catch (err: unknown) {
       console.error("Error saving assignment:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to save assignment";
+      const errorMessage = err instanceof Error ? err.message : t.dialogs.assignment.errors.saveFailed;
       setErrors({ form: errorMessage });
     } finally {
       setIsLoading(false);
@@ -187,11 +189,11 @@ export function AssignmentDialog({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? "Edit Assignment" : "Create New Assignment"}
+      title={isEditing ? t.dialogs.assignment.editTitle : t.dialogs.assignment.createTitle}
       description={
         isEditing
-          ? "Update assignment details, deadline, or status."
-          : "Add an upcoming project, problem set, lab, or exam deadline."
+          ? t.dialogs.assignment.editDesc
+          : t.dialogs.assignment.createDesc
       }
       maxWidth="lg"
     >
@@ -205,10 +207,10 @@ export function AssignmentDialog({
         {/* Title */}
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Assignment Title <span className="text-purple-400">*</span>
+            {t.dialogs.assignment.titleLabel} <span className="text-purple-400">*</span>
           </label>
           <Input
-            placeholder="e.g. Binary Search Trees Problem Set"
+            placeholder={t.dialogs.assignment.titlePlaceholder}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             error={errors.title}
@@ -220,7 +222,7 @@ export function AssignmentDialog({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs font-medium text-zinc-300">
-              Course / Subject <span className="text-purple-400">*</span>
+              {t.dialogs.assignment.courseLabel} <span className="text-purple-400">*</span>
             </label>
             {onOpenCreateCourse && (
               <button
@@ -232,13 +234,13 @@ export function AssignmentDialog({
                 className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
               >
                 <Plus className="h-3 w-3" />
-                <span>New Course</span>
+                <span>{t.dialogs.assignment.newCourseBtn}</span>
               </button>
             )}
           </div>
           {courses.length === 0 ? (
             <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-3 text-xs text-amber-300 flex items-center justify-between">
-              <span>No courses created yet. Please create a course first!</span>
+              <span>{t.dialogs.assignment.noCoursesNotice}</span>
               {onOpenCreateCourse && (
                 <Button
                   type="button"
@@ -249,7 +251,7 @@ export function AssignmentDialog({
                     onOpenCreateCourse();
                   }}
                 >
-                  Add Course
+                  {t.dialogs.assignment.addCourseBtn}
                 </Button>
               )}
             </div>
@@ -260,7 +262,7 @@ export function AssignmentDialog({
               error={errors.courseId}
             >
               <option value="" disabled>
-                Select a course...
+                {t.dialogs.assignment.selectCoursePlaceholder}
               </option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
@@ -276,7 +278,7 @@ export function AssignmentDialog({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Due Date <span className="text-purple-400">*</span>
+              {t.dialogs.assignment.dueDateLabel} <span className="text-purple-400">*</span>
             </label>
             <Input
               type="date"
@@ -289,7 +291,7 @@ export function AssignmentDialog({
 
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Due Time
+              {t.dialogs.assignment.dueTimeLabel}
             </label>
             <Input
               type="time"
@@ -304,30 +306,30 @@ export function AssignmentDialog({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Priority
+              {t.dialogs.assignment.priorityLabel}
             </label>
             <Select
               value={priority}
               onChange={(e) => setPriority(e.target.value as AssignmentPriority)}
             >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
+              <option value="Low">{t.priorities.low}</option>
+              <option value="Medium">{t.priorities.medium}</option>
+              <option value="High">{t.priorities.high}</option>
             </Select>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Status
+              {t.dialogs.assignment.statusLabel}
             </label>
             <Select
               value={status}
               onChange={(e) => handleStatusChange(e.target.value as AssignmentStatus)}
             >
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Overdue">Overdue</option>
+              <option value="Not Started">{t.statuses.notStarted}</option>
+              <option value="In Progress">{t.statuses.inProgress}</option>
+              <option value="Completed">{t.statuses.completed}</option>
+              <option value="Overdue">{t.statuses.overdue}</option>
             </Select>
           </div>
         </div>
@@ -335,7 +337,7 @@ export function AssignmentDialog({
         {/* Progress Slider */}
         <div className="rounded-xl border border-[#1E1E1E] bg-[#080808] p-3.5 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-zinc-300">Completion Progress</span>
+            <span className="font-medium text-zinc-300">{t.dialogs.assignment.progressLabel}</span>
             <span className="font-bold text-purple-400">{progress}%</span>
           </div>
           <input
@@ -352,10 +354,10 @@ export function AssignmentDialog({
         {/* Description */}
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Description & Instructions (Optional)
+            {t.dialogs.assignment.descLabel}
           </label>
           <Textarea
-            placeholder="Assignment prompt, submission guidelines, rubric notes, etc."
+            placeholder={t.dialogs.assignment.descPlaceholder}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -370,14 +372,14 @@ export function AssignmentDialog({
             onClick={onClose}
             disabled={isLoading}
           >
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button
             type="submit"
             isLoading={isLoading}
             disabled={courses.length === 0}
           >
-            {isEditing ? "Save Changes" : "Create Assignment"}
+            {isEditing ? t.dialogs.assignment.saveBtn : t.dialogs.assignment.createBtn}
           </Button>
         </div>
       </form>

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Course } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { BookOpen, Hash, User, FileText, Check } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CourseDialogProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export function CourseDialog({
   courseToEdit,
   onSaved,
 }: CourseDialogProps) {
+  const { t } = useLanguage();
   const isEditing = !!courseToEdit;
   const [name, setName] = React.useState("");
   const [code, setCode] = React.useState("");
@@ -66,7 +68,7 @@ export function CourseDialog({
     const newErrors: { [key: string]: string } = {};
 
     if (!name.trim()) {
-      newErrors.name = "Course name is required";
+      newErrors.name = t.dialogs.course.errors.nameRequired;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -83,7 +85,7 @@ export function CourseDialog({
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setErrors({ form: "You must be signed in to manage courses." });
+        setErrors({ form: t.dialogs.course.errors.authRequired });
         setIsLoading(false);
         return;
       }
@@ -126,7 +128,7 @@ export function CourseDialog({
       onClose();
     } catch (err: unknown) {
       console.error("Error saving course:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to save course";
+      const errorMessage = err instanceof Error ? err.message : t.dialogs.course.errors.saveFailed;
       setErrors({ form: errorMessage });
     } finally {
       setIsLoading(false);
@@ -137,11 +139,11 @@ export function CourseDialog({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? "Edit Course" : "Create New Course"}
+      title={isEditing ? t.dialogs.course.editTitle : t.dialogs.course.createTitle}
       description={
         isEditing
-          ? "Update the details and theme for this course."
-          : "Add a new course or subject to organize your assignments."
+          ? t.dialogs.course.editDesc
+          : t.dialogs.course.createDesc
       }
       maxWidth="md"
     >
@@ -154,10 +156,10 @@ export function CourseDialog({
 
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Course Name <span className="text-purple-400">*</span>
+            {t.dialogs.course.nameLabel} <span className="text-purple-400">*</span>
           </label>
           <Input
-            placeholder="e.g. Data Structures & Algorithms"
+            placeholder={t.dialogs.course.namePlaceholder}
             value={name}
             onChange={(e) => setName(e.target.value)}
             error={errors.name}
@@ -169,10 +171,10 @@ export function CourseDialog({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Course Code
+              {t.dialogs.course.codeLabel}
             </label>
             <Input
-              placeholder="e.g. CS-201"
+              placeholder={t.dialogs.course.codePlaceholder}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               leftIcon={<Hash className="h-4 w-4" />}
@@ -181,10 +183,10 @@ export function CourseDialog({
 
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Instructor / Lecturer
+              {t.dialogs.course.instructorLabel}
             </label>
             <Input
-              placeholder="e.g. Dr. Alan Turing"
+              placeholder={t.dialogs.course.instructorPlaceholder}
               value={instructor}
               onChange={(e) => setInstructor(e.target.value)}
               leftIcon={<User className="h-4 w-4" />}
@@ -194,7 +196,7 @@ export function CourseDialog({
 
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Accent Color
+            {t.dialogs.course.colorLabel}
           </label>
           <div className="flex items-center gap-2 flex-wrap pt-1">
             {PRESET_COLORS.map((c) => (
@@ -216,10 +218,10 @@ export function CourseDialog({
 
         <div>
           <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Description (Optional)
+            {t.dialogs.course.descLabel}
           </label>
           <Textarea
-            placeholder="Notes about schedule, room, syllabus, etc."
+            placeholder={t.dialogs.course.descPlaceholder}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -233,10 +235,10 @@ export function CourseDialog({
             onClick={onClose}
             disabled={isLoading}
           >
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button type="submit" isLoading={isLoading}>
-            {isEditing ? "Save Changes" : "Create Course"}
+            {isEditing ? t.dialogs.course.saveBtn : t.dialogs.course.createBtn}
           </Button>
         </div>
       </form>

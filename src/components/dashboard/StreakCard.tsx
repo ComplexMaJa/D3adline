@@ -3,12 +3,15 @@
 import * as React from "react";
 import { Flame, Check } from "lucide-react";
 import { Assignment } from "@/types/database";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface StreakCardProps {
   assignments: Assignment[];
 }
 
 export function StreakCard({ assignments }: StreakCardProps) {
+  const { t } = useLanguage();
+
   // Compute streak count based on completed assignments or active engagement
   const completedCount = assignments.filter(
     (a) => a.status === "Completed" || a.progress === 100
@@ -18,13 +21,13 @@ export function StreakCard({ assignments }: StreakCardProps) {
   const streakDays = Math.min(7, Math.max(1, completedCount > 0 ? completedCount + 3 : 5));
 
   const weekDays = [
-    { name: "MON", active: true },
-    { name: "TUE", active: true },
-    { name: "WED", active: true },
-    { name: "THU", active: true },
-    { name: "FRI", active: streakDays >= 5 },
-    { name: "SAT", active: streakDays >= 6 },
-    { name: "SUN", active: streakDays >= 7 },
+    { name: t.dashboard.streak.daysAbbr.mon, active: true },
+    { name: t.dashboard.streak.daysAbbr.tue, active: true },
+    { name: t.dashboard.streak.daysAbbr.wed, active: true },
+    { name: t.dashboard.streak.daysAbbr.thu, active: true },
+    { name: t.dashboard.streak.daysAbbr.fri, active: streakDays >= 5 },
+    { name: t.dashboard.streak.daysAbbr.sat, active: streakDays >= 6 },
+    { name: t.dashboard.streak.daysAbbr.sun, active: streakDays >= 7 },
   ];
 
   return (
@@ -33,7 +36,7 @@ export function StreakCard({ assignments }: StreakCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           <Flame className="h-4 w-4 text-purple-400" />
-          <span>7 Day Streak</span>
+          <span>{t.dashboard.streak.sevenDayStreak}</span>
         </div>
       </div>
 
@@ -45,11 +48,11 @@ export function StreakCard({ assignments }: StreakCardProps) {
               {streakDays}
             </span>
             <span className="text-sm font-semibold text-purple-300">
-              days
+              {t.dashboard.streak.days}
             </span>
           </div>
           <p className="text-xs text-zinc-400">
-            Great job! Keep the momentum going.
+            {t.dashboard.streak.streakPraise}
           </p>
         </div>
 

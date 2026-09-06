@@ -45,6 +45,7 @@ import {
   startOfDay,
 } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface AssignmentsClientProps {
   initialAssignments: Assignment[];
@@ -74,6 +75,7 @@ export function AssignmentsClient({
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const { refreshCourses, openCreateAssignment } = useApp();
+  const { t, language } = useLanguage();
   const supabase = createClient();
   const router = useRouter();
 
@@ -265,12 +267,12 @@ export function AssignmentsClient({
   return (
     <div className="space-y-6 animate-fade-in">
       <Header
-        title="Assignment Hub"
-        description="Search, filter, track deadlines, and conquer your coursework with precision."
+        title={t.assignments.title}
+        description={t.assignments.description}
         action={
           <Button onClick={() => openCreateAssignment()} size="sm">
             <Plus className="h-4 w-4" />
-            <span>Create Assignment</span>
+            <span>{t.assignments.newAssignmentBtn}</span>
           </Button>
         }
       />
@@ -281,7 +283,7 @@ export function AssignmentsClient({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="w-full sm:w-80">
             <Input
-              placeholder="Search assignments by title, course, or notes..."
+              placeholder={t.assignments.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               leftIcon={<Search className="h-4 w-4" />}
@@ -324,7 +326,7 @@ export function AssignmentsClient({
                 onClick={clearFilters}
                 className="text-xs text-zinc-400 hover:text-zinc-200"
               >
-                Reset
+                {t.assignments.clearFilters}
               </Button>
             )}
           </div>
@@ -339,7 +341,7 @@ export function AssignmentsClient({
               onChange={(e) => setSelectedCourse(e.target.value)}
               className="text-xs h-8"
             >
-              <option value="all">All Courses</option>
+              <option value="all">{t.assignments.allCourses}</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code ? `[${c.code}] ` : ""}
@@ -356,11 +358,11 @@ export function AssignmentsClient({
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="text-xs h-8"
             >
-              <option value="all">All Statuses</option>
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Overdue">Overdue</option>
+              <option value="all">{t.assignments.allStatuses}</option>
+              <option value="Not Started">{t.statuses.notStarted}</option>
+              <option value="In Progress">{t.statuses.inProgress}</option>
+              <option value="Completed">{t.statuses.completed}</option>
+              <option value="Overdue">{t.statuses.overdue}</option>
             </Select>
           </div>
 
@@ -371,10 +373,10 @@ export function AssignmentsClient({
               onChange={(e) => setSelectedPriority(e.target.value)}
               className="text-xs h-8"
             >
-              <option value="all">All Priorities</option>
-              <option value="High">High Priority</option>
-              <option value="Medium">Medium Priority</option>
-              <option value="Low">Low Priority</option>
+              <option value="all">{t.assignments.allPriorities}</option>
+              <option value="High">{t.priorities.high}</option>
+              <option value="Medium">{t.priorities.medium}</option>
+              <option value="Low">{t.priorities.low}</option>
             </Select>
           </div>
 
@@ -385,12 +387,12 @@ export function AssignmentsClient({
               onChange={(e) => setSelectedDateRange(e.target.value)}
               className="text-xs h-8"
             >
-              <option value="all">Any Deadline</option>
-              <option value="today">Due Today</option>
-              <option value="tomorrow">Due Tomorrow</option>
-              <option value="this_week">Due This Week</option>
-              <option value="upcoming">All Upcoming</option>
-              <option value="overdue">Overdue Only</option>
+              <option value="all">{t.assignments.allTimeframes}</option>
+              <option value="today">{t.assignments.today}</option>
+              <option value="tomorrow">{t.assignments.tomorrow}</option>
+              <option value="this_week">{t.assignments.thisWeek}</option>
+              <option value="upcoming">{t.assignments.upcoming}</option>
+              <option value="overdue">{t.assignments.overdue}</option>
             </Select>
           </div>
 
@@ -401,11 +403,10 @@ export function AssignmentsClient({
               onChange={(e) => setSortBy(e.target.value)}
               className="text-xs h-8"
             >
-              <option value="deadline_asc">Deadline: Soonest</option>
-              <option value="deadline_desc">Deadline: Latest</option>
-              <option value="priority">Priority: High to Low</option>
-              <option value="progress">Progress: Highest</option>
-              <option value="created_desc">Recently Created</option>
+              <option value="deadline_asc">{t.assignments.sortDeadlineAsc}</option>
+              <option value="deadline_desc">{t.assignments.sortDeadlineDesc}</option>
+              <option value="priority">{t.assignments.sortPriority}</option>
+              <option value="title">{t.assignments.sortTitle}</option>
             </Select>
           </div>
         </div>
@@ -415,21 +416,17 @@ export function AssignmentsClient({
       {filteredAssignments.length === 0 ? (
         <EmptyState
           icon={<BookOpen className="h-6 w-6 text-purple-400" />}
-          title={hasActiveFilters ? "No matching assignments" : "No assignments yet"}
-          description={
-            hasActiveFilters
-              ? "Try broadening your filters or search keywords."
-              : "Create your first assignment or problem set to start organizing your deadlines."
-          }
+          title={t.assignments.emptyTitle}
+          description={t.assignments.emptyDescription}
           action={
             hasActiveFilters ? (
               <Button size="sm" variant="outline" onClick={clearFilters}>
-                Clear Filters
+                {t.assignments.clearFilters}
               </Button>
             ) : (
               <Button size="sm" onClick={() => openCreateAssignment()}>
                 <Plus className="h-4 w-4" />
-                <span>Create Assignment</span>
+                <span>{t.assignments.newAssignmentBtn}</span>
               </Button>
             )
           }
@@ -454,13 +451,13 @@ export function AssignmentsClient({
             <thead>
               <tr className="border-b border-[#1A1A1A] bg-[#0B0B0B] text-zinc-400">
                 <th className="p-3.5 w-10">Done</th>
-                <th className="p-3.5">Title</th>
-                <th className="p-3.5">Course</th>
-                <th className="p-3.5">Deadline</th>
-                <th className="p-3.5">Priority</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5">Progress</th>
-                <th className="p-3.5 text-right">Actions</th>
+                <th className="p-3.5">{t.assignments.tableHeaders.title}</th>
+                <th className="p-3.5">{t.assignments.tableHeaders.course}</th>
+                <th className="p-3.5">{t.assignments.tableHeaders.dueDate}</th>
+                <th className="p-3.5">{t.assignments.tableHeaders.priority}</th>
+                <th className="p-3.5">{t.assignments.tableHeaders.status}</th>
+                <th className="p-3.5">{t.assignments.tableHeaders.progress}</th>
+                <th className="p-3.5 text-right">{t.assignments.tableHeaders.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#141414]">
@@ -468,7 +465,8 @@ export function AssignmentsClient({
                 const deadline = getDeadlineInfo(
                   assignment.due_date,
                   assignment.due_time,
-                  assignment.status
+                  assignment.status,
+                  language
                 );
                 const isCompleted =
                   assignment.status === "Completed" || assignment.progress === 100;

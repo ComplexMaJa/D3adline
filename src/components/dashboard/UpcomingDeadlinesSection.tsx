@@ -6,6 +6,7 @@ import { Clock, AlertTriangle, ChevronRight } from "lucide-react";
 import { Assignment } from "@/types/database";
 import { formatDeadline } from "@/lib/deadline-utils";
 import { parseISO, isPast, isToday, differenceInCalendarDays } from "date-fns";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface UpcomingDeadlinesSectionProps {
   assignments: Assignment[];
@@ -14,6 +15,7 @@ interface UpcomingDeadlinesSectionProps {
 type FilterType = "All" | "Overdue" | "Today" | "Upcoming";
 
 export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSectionProps) {
+  const { t, language } = useLanguage();
   const [filter, setFilter] = React.useState<FilterType>("All");
 
   // Incomplete assignments sorted by due_date
@@ -51,7 +53,14 @@ export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSecti
     });
   }, [incompleteAssignments, filter]);
 
-  const tabs: FilterType[] = ["All", "Overdue", "Today", "Upcoming"];
+  const tabs: { key: FilterType; label: string }[] = [
+    { key: "All", label: t.dashboard.upcoming.all },
+    { key: "Overdue", label: t.dashboard.upcoming.overdue },
+    { key: "Today", label: t.dashboard.upcoming.today },
+    { key: "Upcoming", label: t.dashboard.upcoming.upcoming },
+  ];
+
+  const currentTabLabel = tabs.find((x) => x.key === filter)?.label || filter;
 
   return (
     <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 space-y-4 hover:border-[#222222] transition-colors">
@@ -59,22 +68,22 @@ export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSecti
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           <Clock className="h-4 w-4 text-purple-400" />
-          <span>Upcoming Deadlines</span>
+          <span>{t.dashboard.upcoming.title}</span>
         </div>
 
         {/* Filter Tabs */}
         <div className="flex items-center gap-1 bg-[#101010] p-1 rounded-xl border border-[#1E1E1E] self-start sm:self-auto">
           {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setFilter(tab)}
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                filter === tab
+                filter === tab.key
                   ? "bg-purple-600 text-white shadow-sm font-semibold"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-[#181818]"
               }`}
             >
-              {tab}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -83,14 +92,16 @@ export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSecti
       {/* Deadlines List Table */}
       {filteredAssignments.length === 0 ? (
         <div className="py-8 text-center text-xs text-zinc-500">
-          No deadlines found for &quot;{filter}&quot;.
+          {t.dashboard.upcoming.emptyFilter} &quot;{currentTabLabel}&quot;.
         </div>
       ) : (
         <div className="divide-y divide-[#141414]">
           {filteredAssignments.map((assignment) => {
-            const deadlineInfo = formatDeadline(assignment.due_date, assignment.due_time);
+            const deadlineInfo = formatDeadline(assignment.due_date, assignment.due_time, assignment.status, language);
             const courseCode = assignment.course?.code || assignment.course?.name || "GEN";
-            const priority = (assignment.priority || "Medium").toUpperCase();
+            const priorityRaw = assignment.priority || "Medium";
+            const priority = priorityRaw.toUpperCase();
+            const priorityText = priorityRaw === "High" ? t.priorities.high : priorityRaw === "Low" ? t.priorities.low : t.priorities.medium;
 
             // Status Icon style
             const isOverdue = deadlineInfo.isOverdue;
@@ -136,7 +147,7 @@ export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSecti
                         : "bg-blue-950/60 text-blue-300 border-blue-800/40"
                     }`}
                   >
-                    {priority}
+                    {priorityText}
                   </span>
 
                   {/* Title */}

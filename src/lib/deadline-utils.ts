@@ -9,7 +9,9 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
+import { id as localeId } from "date-fns/locale/id";
 import { AssignmentStatus } from "@/types/database";
+import { Language } from "@/lib/i18n/types";
 
 export interface DeadlineInfo {
   label: string;
@@ -44,12 +46,27 @@ export function parseAssignmentDeadline(dueDateStr: string, dueTimeStr?: string 
 export function getDeadlineInfo(
   dueDateStr: string,
   dueTimeStr?: string | null,
-  status?: AssignmentStatus
+  statusOrLang?: AssignmentStatus | Language,
+  maybeLanguage?: Language
 ): DeadlineInfo {
+  let status: AssignmentStatus | undefined;
+  let language: Language = 'en';
+
+  if (statusOrLang === 'en' || statusOrLang === 'id') {
+    language = statusOrLang;
+  } else {
+    status = statusOrLang;
+    if (maybeLanguage) {
+      language = maybeLanguage;
+    }
+  }
+
   const deadline = parseAssignmentDeadline(dueDateStr, dueTimeStr);
   const now = new Date();
   const today = startOfDay(now);
   const deadlineDay = startOfDay(deadline);
+  const isId = language === 'id';
+  const locale = isId ? localeId : undefined;
   
   const isCompleted = status === 'Completed';
   const daysDiff = differenceInCalendarDays(deadlineDay, today);
@@ -57,12 +74,12 @@ export function getDeadlineInfo(
   const isPast = isBefore(deadline, now) && !isToday(deadline);
   const isOverdue = (status === 'Overdue' || isPast || (isToday(deadline) && isBefore(deadline, now))) && !isCompleted;
   
-  const formattedDate = format(deadline, "MMM d, yyyy");
-  const formattedTime = format(deadline, "h:mm a");
+  const formattedDate = format(deadline, isId ? "d MMM yyyy" : "MMM d, yyyy", { locale });
+  const formattedTime = format(deadline, isId ? "HH:mm" : "h:mm a");
 
   if (isCompleted) {
     return {
-      label: `Completed · ${formattedDate}`,
+      label: isId ? `Selesai · ${formattedDate}` : `Completed · ${formattedDate}`,
       isOverdue: false,
       isDueToday: false,
       isDueTomorrow: false,
@@ -80,29 +97,35 @@ export function getDeadlineInfo(
   if (isOverdue) {
     urgencyLevel = 'critical';
     if (isYesterday(deadline)) {
-      label = `Overdue · Yesterday`;
+      label = isId ? `Terlewat · Kemarin` : `Overdue · Yesterday`;
     } else if (daysDiff < 0) {
       const absDays = Math.abs(daysDiff);
-      label = `Overdue · ${absDays} day${absDays > 1 ? 's' : ''} ago`;
+      label = isId
+        ? `Terlewat · ${absDays} hari lalu`
+        : `Overdue · ${absDays} day${absDays > 1 ? 's' : ''} ago`;
     } else {
-      label = `Overdue · ${formattedTime}`;
+      label = isId ? `Terlewat · ${formattedTime}` : `Overdue · ${formattedTime}`;
     }
   } else if (isToday(deadline)) {
     urgencyLevel = 'high';
     if (hoursDiff > 0 && hoursDiff <= 3) {
-      label = `Due in ${hoursDiff} hour${hoursDiff > 1 ? 's' : ''} · ${formattedTime}`;
+      label = isId
+        ? `Tenggat dalam ${hoursDiff} jam · ${formattedTime}`
+        : `Due in ${hoursDiff} hour${hoursDiff > 1 ? 's' : ''} · ${formattedTime}`;
     } else {
-      label = `Due today · ${formattedTime}`;
+      label = isId ? `Tenggat hari ini · ${formattedTime}` : `Due today · ${formattedTime}`;
     }
   } else if (isTomorrow(deadline)) {
     urgencyLevel = 'medium';
-    label = `Due tomorrow · ${formattedTime}`;
+    label = isId ? `Tenggat besok · ${formattedTime}` : `Due tomorrow · ${formattedTime}`;
   } else if (daysDiff > 1 && daysDiff <= 7) {
     urgencyLevel = daysDiff <= 3 ? 'medium' : 'normal';
-    label = `Due in ${daysDiff} days · ${format(deadline, "EEE, MMM d")}`;
+    label = isId
+      ? `Tenggat dalam ${daysDiff} hari · ${format(deadline, "EEE, d MMM", { locale })}`
+      : `Due in ${daysDiff} days · ${format(deadline, "EEE, MMM d")}`;
   } else {
     urgencyLevel = 'normal';
-    label = `Due ${formattedDate}`;
+    label = isId ? `Tenggat ${formattedDate}` : `Due ${formattedDate}`;
   }
 
   return {
@@ -147,29 +170,50 @@ export function getPriorityBadgeStyle(priority: string) {
 export function formatDeadline(
   dueDateStr: string,
   dueTimeStr?: string | null,
-  status?: AssignmentStatus
+  statusOrLang?: AssignmentStatus | Language,
+  maybeLanguage?: Language
 ) {
-  const info = getDeadlineInfo(dueDateStr, dueTimeStr, status);
+  let status: AssignmentStatus | undefined;
+  let language: Language = 'en';
+
+  if (statusOrLang === 'en' || statusOrLang === 'id') {
+    language = statusOrLang;
+  } else {
+    status = statusOrLang;
+    if (maybeLanguage) {
+      language = maybeLanguage;
+    }
+  }
+
+  const info = getDeadlineInfo(dueDateStr, dueTimeStr, status, language);
   const deadline = parseAssignmentDeadline(dueDateStr, dueTimeStr);
   const isDueSoon = info.isDueThisWeek;
+  const isId = language === 'id';
+  const locale = isId ? localeId : undefined;
 
   let relative = info.label;
   if (info.isOverdue) {
     const hours = Math.max(1, Math.abs(differenceInHours(deadline, new Date())));
-    relative = hours < 24 ? `Overdue · ${hours} hour${hours !== 1 ? 's' : ''}` : info.label;
+    if (hours < 24) {
+      relative = isId ? `Terlewat · ${hours} jam` : `Overdue · ${hours} hour${hours !== 1 ? 's' : ''}`;
+    } else {
+      relative = info.label;
+    }
   } else if (info.isDueToday) {
-    relative = "Due today";
+    relative = isId ? "Tenggat hari ini" : "Due today";
   } else if (info.isDueTomorrow) {
-    relative = "Due tomorrow";
+    relative = isId ? "Tenggat besok" : "Due tomorrow";
   } else if (info.daysRemaining > 0 && info.daysRemaining <= 7) {
-    relative = `Due in ${info.daysRemaining} days`;
+    relative = isId ? `Tenggat dalam ${info.daysRemaining} hari` : `Due in ${info.daysRemaining} days`;
   }
 
-  let absolute = format(deadline, "EEE, MMM d");
+  let absolute = format(deadline, isId ? "EEE, d MMM" : "EEE, MMM d", { locale });
   if (info.isDueToday) {
-    absolute = `Due today · ${info.formattedTime}`;
+    absolute = isId ? `Hari ini · ${info.formattedTime}` : `Due today · ${info.formattedTime}`;
   } else if (info.isOverdue) {
-    absolute = `Overdue · ${format(deadline, "MMM d, yyyy")}`;
+    absolute = isId
+      ? `Terlewat · ${format(deadline, "d MMM yyyy", { locale })}`
+      : `Overdue · ${format(deadline, "MMM d, yyyy")}`;
   }
 
   return {

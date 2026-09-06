@@ -20,6 +20,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/components/layout/AppShell";
 import { triggerCompletionConfetti } from "@/lib/confetti";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getDeadlineInfo,
   getPriorityBadgeStyle,
@@ -60,6 +61,7 @@ export function AssignmentDetailClient({
   initialAttachments,
   courses,
 }: AssignmentDetailClientProps) {
+  const { t, language, dateLocale } = useLanguage();
   const [assignment, setAssignment] = React.useState<Assignment>(initialAssignment);
   const [subtasks, setSubtasks] = React.useState<Subtask[]>(initialSubtasks);
   const [attachments, setAttachments] = React.useState<Attachment[]>(initialAttachments);
@@ -84,7 +86,8 @@ export function AssignmentDetailClient({
   const deadline = getDeadlineInfo(
     assignment.due_date,
     assignment.due_time,
-    assignment.status
+    assignment.status,
+    language
   );
 
   const isCompleted = assignment.status === "Completed" || assignment.progress === 100;
@@ -274,13 +277,13 @@ export function AssignmentDetailClient({
     const fileExt = file.name.split(".").pop()?.toLowerCase();
 
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError("File size exceeds 25 MB limit. Please upload a smaller file.");
+      setUploadError(t.assignments.detail.fileSizeExceeded);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     if (fileExt && BLOCKED_EXTENSIONS.includes(fileExt)) {
-      setUploadError(`Executable files (.${fileExt}) are not allowed for security.`);
+      setUploadError(t.assignments.detail.blockedExtension);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -395,7 +398,7 @@ export function AssignmentDetailClient({
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Back to Assignments</span>
+          <span>{t.assignments.detail.backToAssignments}</span>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -405,7 +408,7 @@ export function AssignmentDetailClient({
             onClick={() => setIsEditDialogOpen(true)}
           >
             <Edit2 className="h-3.5 w-3.5" />
-            <span>Edit</span>
+            <span>{t.common.edit}</span>
           </Button>
           <Button
             variant="danger"
@@ -413,7 +416,7 @@ export function AssignmentDetailClient({
             onClick={() => setIsDeleteDialogOpen(true)}
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
+            <span>{t.common.delete}</span>
           </Button>
         </div>
       </div>
@@ -476,7 +479,7 @@ export function AssignmentDetailClient({
           {/* Deadline details */}
           <div className="p-3.5 rounded-xl border border-[#161616] bg-[#070707] space-y-1">
             <span className="text-[11px] text-zinc-500 flex items-center gap-1">
-              <Calendar className="h-3 w-3" /> Due Date & Time
+              <Calendar className="h-3 w-3" /> {t.assignments.detail.dueDateTime}
             </span>
             <p className="text-xs font-semibold text-zinc-200">
               {deadline.formattedDate}
@@ -486,7 +489,7 @@ export function AssignmentDetailClient({
 
           {/* Priority selector */}
           <div className="p-3.5 rounded-xl border border-[#161616] bg-[#070707] space-y-1">
-            <span className="text-[11px] text-zinc-500">Priority Level</span>
+            <span className="text-[11px] text-zinc-500">{t.assignments.detail.priorityLevel}</span>
             <Select
               value={assignment.priority}
               onChange={(e) =>
@@ -494,15 +497,15 @@ export function AssignmentDetailClient({
               }
               className="text-xs h-7"
             >
-              <option value="Low">Low Priority</option>
-              <option value="Medium">Medium Priority</option>
-              <option value="High">High Priority</option>
+              <option value="Low">{t.priorities.low}</option>
+              <option value="Medium">{t.priorities.medium}</option>
+              <option value="High">{t.priorities.high}</option>
             </Select>
           </div>
 
           {/* Status selector */}
           <div className="p-3.5 rounded-xl border border-[#161616] bg-[#070707] space-y-1">
-            <span className="text-[11px] text-zinc-500">Workflow Status</span>
+            <span className="text-[11px] text-zinc-500">{t.assignments.detail.workflowStatus}</span>
             <Select
               value={assignment.status}
               onChange={(e) =>
@@ -510,17 +513,17 @@ export function AssignmentDetailClient({
               }
               className="text-xs h-7"
             >
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Overdue">Overdue</option>
+              <option value="Not Started">{t.statuses.notStarted}</option>
+              <option value="In Progress">{t.statuses.inProgress}</option>
+              <option value="Completed">{t.statuses.completed}</option>
+              <option value="Overdue">{t.statuses.overdue}</option>
             </Select>
           </div>
 
           {/* Progress % */}
           <div className="p-3.5 rounded-xl border border-[#161616] bg-[#070707] space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-zinc-500">Completion</span>
+              <span className="text-[11px] text-zinc-500">{t.assignments.detail.completionProgress}</span>
               <span className="text-xs font-bold text-purple-400">
                 {assignment.progress}%
               </span>
@@ -546,21 +549,21 @@ export function AssignmentDetailClient({
             <div>
               <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                <span>Subtasks & Checklist</span>
+                <span>{t.assignments.detail.subtasksTitle}</span>
               </h3>
               <p className="text-[11px] text-zinc-500">
-                Break down complex assignments into actionable milestones
+                {t.assignments.detail.subtasksSubtitle}
               </p>
             </div>
             <span className="text-xs font-medium text-zinc-400">
-              {completedSubtasksCount}/{subtasks.length} done
+              {completedSubtasksCount}/{subtasks.length} {t.assignments.detail.doneCount}
             </span>
           </div>
 
           {/* Add Subtask Form */}
           <form onSubmit={handleAddSubtask} className="flex gap-2">
             <Input
-              placeholder="Add a step (e.g. Draft section 1, Run tests)..."
+              placeholder={t.assignments.detail.subtasksPlaceholder}
               value={newSubtaskTitle}
               onChange={(e) => setNewSubtaskTitle(e.target.value)}
               className="text-xs h-8"
@@ -572,14 +575,14 @@ export function AssignmentDetailClient({
               disabled={!newSubtaskTitle.trim()}
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Add</span>
+              <span>{t.assignments.detail.addSubtaskBtn}</span>
             </Button>
           </form>
 
           {/* Subtask list */}
           {subtasks.length === 0 ? (
             <div className="p-4 rounded-lg border border-dashed border-[#1C1C1C] text-center text-xs text-zinc-500">
-              No subtasks added yet. Add steps above to track progress granularly.
+              {t.assignments.detail.subtasksEmpty}
             </div>
           ) : (
             <div className="space-y-2">
@@ -612,7 +615,7 @@ export function AssignmentDetailClient({
                   <button
                     onClick={() => handleDeleteSubtask(subtask.id)}
                     className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-opacity"
-                    title="Delete subtask"
+                    title={t.common.delete}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -628,10 +631,10 @@ export function AssignmentDetailClient({
             <div>
               <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
                 <Paperclip className="h-4 w-4 text-purple-400" />
-                <span>Files & Attachments</span>
+                <span>{t.assignments.detail.attachmentsTitle}</span>
               </h3>
               <p className="text-[11px] text-zinc-500">
-                Upload problem set PDFs, rubrics, and source files
+                {t.assignments.detail.attachmentsSubtitle}
               </p>
             </div>
 
@@ -642,7 +645,7 @@ export function AssignmentDetailClient({
               isLoading={isUploadingFile}
             >
               <Upload className="h-3.5 w-3.5" />
-              <span>Upload File</span>
+              <span>{t.assignments.detail.uploadBtn}</span>
             </Button>
             <input
               type="file"
@@ -663,7 +666,7 @@ export function AssignmentDetailClient({
             <div className="p-6 rounded-lg border border-dashed border-[#1C1C1C] text-center space-y-2">
               <File className="h-6 w-6 text-zinc-600 mx-auto" />
               <p className="text-xs text-zinc-500">
-                No attachments uploaded yet.
+                {t.assignments.detail.attachmentsEmpty}
               </p>
               <Button
                 size="sm"
@@ -671,7 +674,7 @@ export function AssignmentDetailClient({
                 onClick={() => fileInputRef.current?.click()}
                 className="text-xs text-purple-400"
               >
-                Choose a file to attach
+                {t.assignments.detail.chooseFile}
               </Button>
             </div>
           ) : (
@@ -689,7 +692,7 @@ export function AssignmentDetailClient({
                       </p>
                       <p className="text-[10px] text-zinc-500">
                         {formatBytes(att.file_size)} ·{" "}
-                        {format(parseISO(att.created_at), "MMM d, yyyy")}
+                        {format(parseISO(att.created_at), language === "id" ? "d MMM yyyy" : "MMM d, yyyy", { locale: dateLocale })}
                       </p>
                     </div>
                   </div>
@@ -705,7 +708,7 @@ export function AssignmentDetailClient({
                     <button
                       onClick={() => handleDeleteAttachment(att)}
                       className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
-                      title="Delete File"
+                      title={t.common.delete}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -735,8 +738,13 @@ export function AssignmentDetailClient({
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteAssignment}
-        title="Delete Assignment?"
-        description={`Are you sure you want to delete "${assignment.title}"? All subtasks and attached files will also be removed.`}
+        title={t.assignments.detail.deleteConfirmTitle}
+        description={
+          language === "id"
+            ? `Apakah Anda yakin ingin menghapus "${assignment.title}"? Seluruh subtugas dan berkas lampiran juga akan dihapus.`
+            : `Are you sure you want to delete "${assignment.title}"? All subtasks and attached files will also be removed.`
+        }
+        confirmText={t.common.delete}
         isLoading={isDeleting}
       />
     </div>

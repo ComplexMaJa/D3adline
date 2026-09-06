@@ -1,14 +1,16 @@
-"use client";
-
 import * as React from "react";
 import { MessageSquare, CheckCircle2, AlertTriangle, Calendar, Percent } from "lucide-react";
 import { DashboardMetrics } from "@/types/database";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface DashboardStatsProps {
   metrics: DashboardMetrics;
 }
 
 export function DashboardStats({ metrics }: DashboardStatsProps) {
+  const { t, language } = useLanguage();
+  const isId = language === "id";
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
       {/* 1. Total Assignments */}
@@ -21,10 +23,10 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
             {metrics.totalAssignments}
           </div>
           <div className="text-xs font-semibold text-zinc-300 truncate">
-            Total Assignments
+            {t.dashboard.stats.totalAssignments}
           </div>
           <div className="text-[11px] text-zinc-500 truncate">
-            All courses
+            {isId ? "Semua mata kuliah" : "All courses"}
           </div>
         </div>
       </div>
@@ -39,10 +41,10 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
             {metrics.completedAssignments}
           </div>
           <div className="text-xs font-semibold text-zinc-300 truncate">
-            Completed
+            {t.dashboard.stats.completed}
           </div>
           <div className="text-[11px] text-emerald-400 font-medium truncate">
-            {metrics.completionPercentage}% of total
+            {metrics.completionPercentage}% {t.dashboard.stats.ofTotal}
           </div>
         </div>
       </div>
@@ -57,10 +59,10 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
             {metrics.overdueAssignments}
           </div>
           <div className="text-xs font-semibold text-zinc-300 truncate">
-            Overdue
+            {t.dashboard.stats.overdue}
           </div>
           <div className="text-[11px] text-red-400/90 font-medium truncate">
-            {metrics.overdueAssignments > 0 ? "Needs attention" : "All on track"}
+            {metrics.overdueAssignments > 0 ? t.dashboard.stats.needsAttention : t.dashboard.stats.allOnTrack}
           </div>
         </div>
       </div>
@@ -75,10 +77,10 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
             {metrics.dueThisWeek}
           </div>
           <div className="text-xs font-semibold text-zinc-300 truncate">
-            Due This Week
+            {t.dashboard.stats.dueThisWeek}
           </div>
           <div className="text-[11px] text-zinc-500 truncate">
-            Next 7 days
+            {t.dashboard.stats.next7Days}
           </div>
         </div>
       </div>
@@ -94,7 +96,7 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
               {metrics.completionPercentage}%
             </div>
             <div className="text-xs font-semibold text-zinc-300 truncate">
-              Completion Rate
+              {t.dashboard.stats.completionRate}
             </div>
           </div>
         </div>

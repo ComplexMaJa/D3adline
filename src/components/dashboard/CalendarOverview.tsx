@@ -18,12 +18,14 @@ import {
 } from "date-fns";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { Assignment } from "@/types/database";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CalendarOverviewProps {
   assignments: Assignment[];
 }
 
 export function CalendarOverview({ assignments }: CalendarOverviewProps) {
+  const { t, dateLocale } = useLanguage();
   const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
   const now = new Date();
 
@@ -74,7 +76,15 @@ export function CalendarOverview({ assignments }: CalendarOverviewProps) {
     return { hasOverdue, hasDueToday, hasDueSoon, hasCompleted };
   };
 
-  const weekDays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+  const weekDays = [
+    t.calendar.weekdays.mon,
+    t.calendar.weekdays.tue,
+    t.calendar.weekdays.wed,
+    t.calendar.weekdays.thu,
+    t.calendar.weekdays.fri,
+    t.calendar.weekdays.sat,
+    t.calendar.weekdays.sun,
+  ];
 
   return (
     <div className="rounded-2xl border border-[#181818] bg-[#070707] p-5 space-y-4 hover:border-[#222222] transition-colors">
@@ -82,10 +92,10 @@ export function CalendarOverview({ assignments }: CalendarOverviewProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           <CalendarIcon className="h-4 w-4 text-purple-400" />
-          <span>Calendar Overview</span>
+          <span>{t.dashboard.calendarOverview.title}</span>
         </div>
         <div className="flex items-center gap-1 text-xs text-zinc-400 bg-[#121212] px-2 py-1 rounded-md border border-[#1E1E1E]">
-          <span>Month</span>
+          <span>{t.dashboard.calendarOverview.month}</span>
           <ChevronDown className="h-3 w-3" />
         </div>
       </div>
@@ -95,17 +105,17 @@ export function CalendarOverview({ assignments }: CalendarOverviewProps) {
         <button
           onClick={handlePrevMonth}
           className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-[#141414] transition-colors"
-          title="Previous Month"
+          title={t.dashboard.calendarOverview.previousMonth}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <span className="text-xs font-bold text-zinc-200">
-          {format(currentDate, "MMMM yyyy")}
+          {format(currentDate, "MMMM yyyy", { locale: dateLocale })}
         </span>
         <button
           onClick={handleNextMonth}
           className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-[#141414] transition-colors"
-          title="Next Month"
+          title={t.dashboard.calendarOverview.nextMonth}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -114,7 +124,7 @@ export function CalendarOverview({ assignments }: CalendarOverviewProps) {
       {/* Weekday Header */}
       <div className="grid grid-cols-7 gap-1 text-center">
         {weekDays.map((day) => (
-          <span key={day} className="text-[10px] font-bold text-zinc-500 py-1">
+          <span key={day} className="text-[10px] font-bold text-zinc-500 py-1 uppercase">
             {day}
           </span>
         ))}
@@ -170,19 +180,19 @@ export function CalendarOverview({ assignments }: CalendarOverviewProps) {
       <div className="pt-2 border-t border-[#141414] flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-400">
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-          <span>Overdue</span>
+          <span>{t.dashboard.calendarOverview.overdue}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-          <span>Due Today</span>
+          <span>{t.dashboard.calendarOverview.dueToday}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
-          <span>Due Soon</span>
+          <span>{t.dashboard.calendarOverview.dueSoon}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <span>Completed</span>
+          <span>{t.dashboard.calendarOverview.completed}</span>
         </div>
       </div>
     </div>
