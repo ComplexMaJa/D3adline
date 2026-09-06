@@ -59,14 +59,23 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: profile.id,
+          email: profile.email,
           display_name: displayName.trim(),
           avatar_url: avatarUrl.trim() || null,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", profile.id);
+        });
 
       if (error) throw error;
+
+      // Also update auth user metadata for fallback resilience
+      await supabase.auth.updateUser({
+        data: {
+          display_name: displayName.trim(),
+          avatar_url: avatarUrl.trim() || null,
+        },
+      });
 
       setProfile((prev) => ({
         ...prev,

@@ -44,7 +44,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface AssignmentsClientProps {
   initialAssignments: Assignment[];
@@ -55,10 +55,14 @@ export function AssignmentsClient({
   initialAssignments,
   courses,
 }: AssignmentsClientProps) {
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status");
+  const courseParam = searchParams.get("course");
+
   const [assignments, setAssignments] = React.useState<Assignment[]>(initialAssignments);
   const [search, setSearch] = React.useState("");
-  const [selectedCourse, setSelectedCourse] = React.useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = React.useState<string>("all");
+  const [selectedCourse, setSelectedCourse] = React.useState<string>(courseParam || "all");
+  const [selectedStatus, setSelectedStatus] = React.useState<string>(statusParam || "all");
   const [selectedPriority, setSelectedPriority] = React.useState<string>("all");
   const [selectedDateRange, setSelectedDateRange] = React.useState<string>("all");
   const [sortBy, setSortBy] = React.useState<string>("deadline_asc");
@@ -76,6 +80,18 @@ export function AssignmentsClient({
   React.useEffect(() => {
     setAssignments(initialAssignments);
   }, [initialAssignments]);
+
+  // Synchronize when query params change
+  React.useEffect(() => {
+    const s = searchParams.get("status");
+    if (s) {
+      setSelectedStatus(s);
+    }
+    const c = searchParams.get("course");
+    if (c) {
+      setSelectedCourse(c);
+    }
+  }, [searchParams]);
 
   // Filter & Search Logic
   const filteredAssignments = React.useMemo(() => {
@@ -133,10 +149,14 @@ export function AssignmentsClient({
       })
       .sort((a, b) => {
         if (sortBy === "deadline_asc") {
-          return a.due_date.localeCompare(b.due_date);
+          const dateA = `${a.due_date}T${a.due_time || "23:59:00"}`;
+          const dateB = `${b.due_date}T${b.due_time || "23:59:00"}`;
+          return dateA.localeCompare(dateB);
         }
         if (sortBy === "deadline_desc") {
-          return b.due_date.localeCompare(a.due_date);
+          const dateA = `${a.due_date}T${a.due_time || "23:59:00"}`;
+          const dateB = `${b.due_date}T${b.due_time || "23:59:00"}`;
+          return dateB.localeCompare(dateA);
         }
         if (sortBy === "priority") {
           const order = { High: 3, Medium: 2, Low: 1 };

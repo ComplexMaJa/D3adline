@@ -48,7 +48,13 @@ export function CourseDetailClient({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const { refreshCourses } = useApp();
+  // Assignment edit and delete states
+  const [assignmentToEdit, setAssignmentToEdit] = React.useState<Assignment | null>(null);
+  const [isEditAssignmentOpen, setIsEditAssignmentOpen] = React.useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = React.useState<Assignment | null>(null);
+  const [isDeletingAssignment, setIsDeletingAssignment] = React.useState(false);
+
+  const { courses, refreshCourses } = useApp();
   const supabase = createClient();
   const router = useRouter();
 
@@ -103,6 +109,37 @@ export function CourseDetailClient({
       console.error("Error deleting course:", err);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleEditAssignment = (assignment: Assignment) => {
+    setAssignmentToEdit(assignment);
+    setIsEditAssignmentOpen(true);
+  };
+
+  const handleDeleteAssignment = (assignment: Assignment) => {
+    setAssignmentToDelete(assignment);
+  };
+
+  const handleConfirmDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
+    setIsDeletingAssignment(true);
+    try {
+      const { error } = await supabase
+        .from("assignments")
+        .delete()
+        .eq("id", assignmentToDelete.id);
+
+      if (error) throw error;
+
+      setAssignments((prev) => prev.filter((a) => a.id !== assignmentToDelete.id));
+      await refreshCourses();
+      router.refresh();
+      setAssignmentToDelete(null);
+    } catch (err) {
+      console.error("Error deleting assignment:", err);
+    } finally {
+      setIsDeletingAssignment(false);
     }
   };
 
@@ -257,6 +294,8 @@ export function CourseDetailClient({
                 assignment={assignment}
                 course={course}
                 onToggleComplete={handleToggleComplete}
+                onEdit={handleEditAssignment}
+                onDelete={handleDeleteAssignment}
               />
             ))}
           </div>
@@ -278,8 +317,24 @@ export function CourseDetailClient({
       <AssignmentDialog
         isOpen={isAddAssignmentOpen}
         onClose={() => setIsAddAssignmentOpen(false)}
-        courses={[course]}
+        courses={courses && courses.length > 0 ? courses : [course]}
         initialCourseId={course.id}
+        onSaved={async () => {
+          await refreshCourses();
+          router.refresh();
+        }}
+      />
+
+      {/* Edit Assignment Dialog */}
+      <AssignmentDialog
+        isOpen={isEditAssignmentOpen}
+        onClose={() => {
+          setIsEditAssignmentOpen(false);
+          setAssignmentToEdit(null);
+        }}
+        assignmentToEdit={assignmentToEdit}
+        courses={courses && courses.length > 0 ? courses : [course]}
+        initialCourseId={assignmentToEdit?.course_id || course.id}
         onSaved={async () => {
           await refreshCourses();
           router.refresh();
@@ -294,6 +349,16 @@ export function CourseDetailClient({
         title={`Delete ${course.name}?`}
         description="This will permanently delete this course and all associated assignments. This action cannot be undone."
         isLoading={isDeleting}
+      />
+
+      {/* Delete Assignment Confirm */}
+      <ConfirmDialog
+        isOpen={!!assignmentToDelete}
+        onClose={() => setAssignmentToDelete(null)}
+        onConfirm={handleConfirmDeleteAssignment}
+        title="Delete Assignment?"
+        description={`Are you sure you want to delete "${assignmentToDelete?.title}"? This action cannot be undone.`}
+        isLoading={isDeletingAssignment}
       />
     </div>
   );

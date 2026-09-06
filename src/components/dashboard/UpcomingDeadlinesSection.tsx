@@ -15,7 +15,6 @@ type FilterType = "All" | "Overdue" | "Today" | "Upcoming";
 
 export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSectionProps) {
   const [filter, setFilter] = React.useState<FilterType>("All");
-  const now = new Date();
 
   // Incomplete assignments sorted by due_date
   const incompleteAssignments = React.useMemo(() => {
@@ -30,6 +29,7 @@ export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSecti
 
   // Apply active filter
   const filteredAssignments = React.useMemo(() => {
+    const now = new Date();
     return incompleteAssignments.filter((a) => {
       try {
         const dueDate = parseISO(a.due_date);
@@ -49,7 +49,7 @@ export function UpcomingDeadlinesSection({ assignments }: UpcomingDeadlinesSecti
         return true;
       }
     });
-  }, [incompleteAssignments, filter, now]);
+  }, [incompleteAssignments, filter]);
 
   const tabs: FilterType[] = ["All", "Overdue", "Today", "Upcoming"];
 

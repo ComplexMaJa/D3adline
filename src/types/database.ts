@@ -31,6 +31,7 @@ export interface Course {
   // Computed / joined fields
   assignments_count?: number;
   completed_count?: number;
+  overdue_count?: number;
   completion_percentage?: number;
 }
 

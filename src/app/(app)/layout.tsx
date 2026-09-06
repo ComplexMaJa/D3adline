@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { Course, Profile } from "@/types/database";
+import { getDeadlineInfo } from "@/lib/deadline-utils";
 
 export default async function AppLayout({
   children,
@@ -43,7 +44,7 @@ export default async function AppLayout({
     .from("courses")
     .select(`
       *,
-      assignments:assignments(id, status, progress)
+      assignments:assignments(id, status, progress, due_date, due_time)
     `)
     .order("name", { ascending: true });
 
@@ -53,6 +54,11 @@ export default async function AppLayout({
     const completed = list.filter(
       (a: any) => a.status === "Completed" || a.progress === 100
     ).length;
+    const overdue = list.filter((a: any) => {
+      if (a.status === "Completed" || a.progress === 100) return false;
+      const info = getDeadlineInfo(a.due_date, a.due_time, a.status);
+      return info.isOverdue;
+    }).length;
     const completion_percentage =
       total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -68,6 +74,7 @@ export default async function AppLayout({
       updated_at: c.updated_at,
       assignments_count: total,
       completed_count: completed,
+      overdue_count: overdue,
       completion_percentage,
     };
   });

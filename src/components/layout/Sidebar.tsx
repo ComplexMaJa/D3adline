@@ -33,7 +33,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
   const [showCreateMenu, setShowCreateMenu] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const supabase = createClient();
-  const { courses, openCreateCourse } = useApp();
+  const { courses, overdueCount, openCreateCourse } = useApp();
 
   // Close create dropdown when clicking outside
   React.useEffect(() => {
@@ -221,26 +221,28 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
 
       {/* Bottom Section: Overdue Alert & User Profile */}
       <div className="space-y-3 pt-4">
-        {/* Overdue alert card matching reference */}
-        <Link
-          href="/assignments?status=Overdue"
-          className="flex items-center justify-between p-2.5 rounded-xl border border-red-950/40 bg-gradient-to-r from-red-950/20 via-[#0A0606] to-[#080808] hover:border-red-900/60 transition-all group"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-7 w-7 rounded-lg bg-red-950/80 border border-red-800/60 flex items-center justify-center text-red-400 shrink-0">
-              <AlertTriangle className="h-3.5 w-3.5" />
+        {/* Overdue alert card */}
+        {overdueCount > 0 && (
+          <Link
+            href="/assignments?status=Overdue"
+            className="flex items-center justify-between p-2.5 rounded-xl border border-red-950/40 bg-gradient-to-r from-red-950/20 via-[#0A0606] to-[#080808] hover:border-red-900/60 transition-all group animate-fade-in"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-red-950/80 border border-red-800/60 flex items-center justify-center text-red-400 shrink-0">
+                <AlertTriangle className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-red-300 group-hover:text-red-200 transition-colors truncate">
+                  {overdueCount} Overdue
+                </p>
+                <p className="text-[10px] text-zinc-500 truncate">
+                  Needs your attention
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-red-300 group-hover:text-red-200 transition-colors truncate">
-                1 Overdue
-              </p>
-              <p className="text-[10px] text-zinc-500 truncate">
-                Needs your attention
-              </p>
-            </div>
-          </div>
-          <ChevronRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors shrink-0" />
-        </Link>
+            <ChevronRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors shrink-0" />
+          </Link>
+        )}
 
         {/* User Card */}
         <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#080808] border border-[#181818]">

@@ -31,7 +31,11 @@ export function parseAssignmentDeadline(dueDateStr: string, dueTimeStr?: string 
   const cleanTime = time.length === 5 ? `${time}:00` : time;
   
   try {
-    return new Date(`${dueDateStr}T${cleanTime}`);
+    const d = new Date(`${dueDateStr}T${cleanTime}`);
+    if (isNaN(d.getTime())) {
+      return parseISO(dueDateStr);
+    }
+    return d;
   } catch {
     return parseISO(dueDateStr);
   }
@@ -165,7 +169,7 @@ export function formatDeadline(
   if (info.isDueToday) {
     absolute = `Due today · ${info.formattedTime}`;
   } else if (info.isOverdue) {
-    absolute = `Due today · ${info.formattedTime}`;
+    absolute = `Overdue · ${format(deadline, "MMM d, yyyy")}`;
   }
 
   return {

@@ -45,26 +45,35 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute = pathname === '/login' || pathname === '/register';
   const isPublicRoute = pathname === '/' || isAuthRoute || pathname.startsWith('/auth');
 
+  // Helper function to create redirect responses that preserve refreshed auth cookies
+  const createRedirect = (url: URL) => {
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
+  };
+
   // If user is not logged in and tries to access protected app routes
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirectTo', pathname);
-    return NextResponse.redirect(url);
+    return createRedirect(url);
   }
 
   // If user is logged in and visits login or register, redirect to dashboard
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    return createRedirect(url);
   }
 
   // If user is logged in and visits root, redirect to dashboard
   if (user && pathname === '/') {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    return createRedirect(url);
   }
 
   return supabaseResponse;

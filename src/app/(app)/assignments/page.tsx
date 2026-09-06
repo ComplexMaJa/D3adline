@@ -1,3 +1,4 @@
+import * as React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { AssignmentsClient } from "./AssignmentsClient";
 import { Assignment, Course } from "@/types/database";
@@ -25,9 +26,11 @@ export default async function AssignmentsPage() {
   const courses: Course[] = (rawCourses || []) as Course[];
 
   return (
-    <AssignmentsClient
-      initialAssignments={assignments}
-      courses={courses}
-    />
+    <React.Suspense fallback={<div className="animate-pulse py-12 text-center text-xs text-zinc-500">Loading assignments...</div>}>
+      <AssignmentsClient
+        initialAssignments={assignments}
+        courses={courses}
+      />
+    </React.Suspense>
   );
 }

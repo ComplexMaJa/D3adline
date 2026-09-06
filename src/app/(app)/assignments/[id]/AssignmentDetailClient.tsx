@@ -268,6 +268,23 @@ export function AssignmentDetailClient({
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+    const BLOCKED_EXTENSIONS = ["exe", "bat", "cmd", "sh", "msi", "vbs", "scr", "com", "pif"];
+
+    const fileExt = file.name.split(".").pop()?.toLowerCase();
+
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError("File size exceeds 25 MB limit. Please upload a smaller file.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (fileExt && BLOCKED_EXTENSIONS.includes(fileExt)) {
+      setUploadError(`Executable files (.${fileExt}) are not allowed for security.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setIsUploadingFile(true);
     setUploadError(null);
 
@@ -276,8 +293,6 @@ export function AssignmentDetailClient({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
-
-      const fileExt = file.name.split(".").pop();
       const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const filePath = `${user.id}/${assignment.id}/${Date.now()}_${safeName}`;
 

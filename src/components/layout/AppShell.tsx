@@ -7,6 +7,7 @@ import { AssignmentDialog } from "@/components/forms/AssignmentDialog";
 import { CourseDialog } from "@/components/forms/CourseDialog";
 import { Profile, Course, Assignment } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { getDeadlineInfo } from "@/lib/deadline-utils";
 import { useRouter } from "next/navigation";
 
 interface AppShellProps {
@@ -18,12 +19,14 @@ interface AppShellProps {
 export const AppContext = React.createContext<{
   profile: Profile | null;
   courses: Course[];
+  overdueCount: number;
   refreshCourses: () => Promise<void>;
   openCreateAssignment: (courseId?: string) => void;
   openCreateCourse: () => void;
 }>({
   profile: null,
   courses: [],
+  overdueCount: 0,
   refreshCourses: async () => {},
   openCreateAssignment: () => {},
   openCreateCourse: () => {},
@@ -43,9 +46,21 @@ export function AppShell({
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = React.useState(false);
   const [isCourseModalOpen, setIsCourseModalOpen] = React.useState(false);
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | undefined>();
+  const initialFetchDone = React.useRef(false);
 
   const supabase = createClient();
   const router = useRouter();
+
+  // Sync state if server layout props change (e.g. after router.refresh())
+  React.useEffect(() => {
+    setCourses(initialCourses);
+  }, [initialCourses]);
+
+  React.useEffect(() => {
+    if (initialProfile) {
+      setProfile(initialProfile);
+    }
+  }, [initialProfile]);
 
   // Refresh courses helper
   const refreshCourses = React.useCallback(async () => {
@@ -54,7 +69,7 @@ export function AppShell({
         .from("courses")
         .select(`
           *,
-          assignments:assignments(id, status, progress)
+          assignments:assignments(id, status, progress, due_date, due_time)
         `)
         .order("name", { ascending: true });
 
@@ -65,6 +80,11 @@ export function AppShell({
           const completed = assignmentsList.filter(
             (a: any) => a.status === "Completed" || a.progress === 100
           ).length;
+          const overdue = assignmentsList.filter((a: any) => {
+            if (a.status === "Completed" || a.progress === 100) return false;
+            const info = getDeadlineInfo(a.due_date, a.due_time, a.status);
+            return info.isOverdue;
+          }).length;
           const completion_percentage =
             total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -72,6 +92,7 @@ export function AppShell({
             ...c,
             assignments_count: total,
             completed_count: completed,
+            overdue_count: overdue,
             completion_percentage,
           };
         });
@@ -82,8 +103,11 @@ export function AppShell({
     }
   }, [supabase]);
 
-  // Initial load
+  // Initial load once on mount without loop
   React.useEffect(() => {
+    if (initialFetchDone.current) return;
+    initialFetchDone.current = true;
+
     async function loadUser() {
       const {
         data: { user },
@@ -113,10 +137,14 @@ export function AppShell({
     if (!profile) {
       loadUser();
     }
-    if (courses.length === 0) {
+    if (initialCourses.length === 0) {
       refreshCourses();
     }
-  }, [supabase, profile, courses.length, refreshCourses]);
+  }, [supabase, profile, initialCourses.length, refreshCourses]);
+
+  const totalOverdueCount = React.useMemo(() => {
+    return courses.reduce((acc, c) => acc + (c.overdue_count || 0), 0);
+  }, [courses]);
 
   const openCreateAssignment = (courseId?: string) => {
     setSelectedCourseId(courseId);
@@ -142,6 +170,7 @@ export function AppShell({
       value={{
         profile,
         courses,
+        overdueCount: totalOverdueCount,
         refreshCourses,
         openCreateAssignment,
         openCreateCourse,
