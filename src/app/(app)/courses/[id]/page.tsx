@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CourseDetailClient } from "./CourseDetailClient";
 import { Course, Assignment } from "@/types/database";
+import { getDeadlineInfo } from "@/lib/deadline-utils";
 
 export default async function CourseDetailPage({
   params,
@@ -42,7 +43,10 @@ export default async function CourseDetailPage({
   const inProgress = assignments.filter(
     (a) => a.status === "In Progress" && a.progress < 100
   ).length;
-  const overdue = assignments.filter((a) => a.status === "Overdue").length;
+  const overdue = assignments.filter((a) => {
+    if (a.status === "Completed" || a.progress === 100) return false;
+    return getDeadlineInfo(a.due_date, a.due_time, a.status).isOverdue;
+  }).length;
   const completionPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const course: Course = {

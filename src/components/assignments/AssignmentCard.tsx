@@ -53,6 +53,8 @@ export function AssignmentCard({
   );
 
   const isCompleted = assignment.status === "Completed" || assignment.progress === 100;
+  const isOverdue = deadlineInfo.isOverdue && !isCompleted;
+  const effectiveStatus = isCompleted ? "Completed" : isOverdue ? "Overdue" : assignment.status;
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -233,14 +235,14 @@ export function AssignmentCard({
             <span
               className={cn(
                 "px-1.5 py-0.2 rounded text-[10px] border font-medium",
-                getStatusBadgeStyle(assignment.status)
+                getStatusBadgeStyle(effectiveStatus)
               )}
             >
-              {assignment.status === "Completed"
+              {effectiveStatus === "Completed"
                 ? t.statuses.completed
-                : assignment.status === "In Progress"
+                : effectiveStatus === "In Progress"
                 ? t.statuses.inProgress
-                : assignment.status === "Overdue"
+                : effectiveStatus === "Overdue"
                 ? t.statuses.overdue
                 : t.statuses.notStarted}
             </span>

@@ -47,6 +47,27 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
+function normalizeStatus(val: string | null): string {
+  if (!val || val === "all") return "all";
+  const lower = val.toLowerCase();
+  if (lower === "overdue") return "Overdue";
+  if (lower === "completed") return "Completed";
+  if (lower === "in progress" || lower === "in_progress") return "In Progress";
+  if (lower === "not started" || lower === "not_started") return "Not Started";
+  return val;
+}
+
+function normalizeDateRange(val: string | null): string {
+  if (!val || val === "all") return "all";
+  const lower = val.toLowerCase();
+  if (lower === "today") return "today";
+  if (lower === "tomorrow") return "tomorrow";
+  if (lower === "this_week" || lower === "thisweek") return "this_week";
+  if (lower === "upcoming") return "upcoming";
+  if (lower === "overdue") return "overdue";
+  return val;
+}
+
 interface AssignmentsClientProps {
   initialAssignments: Assignment[];
   courses: Course[];
@@ -59,13 +80,15 @@ export function AssignmentsClient({
   const searchParams = useSearchParams();
   const statusParam = searchParams.get("status");
   const courseParam = searchParams.get("course");
+  const dateRangeParam = searchParams.get("dateRange") || searchParams.get("timeframe");
+  const priorityParam = searchParams.get("priority");
 
   const [assignments, setAssignments] = React.useState<Assignment[]>(initialAssignments);
   const [search, setSearch] = React.useState("");
   const [selectedCourse, setSelectedCourse] = React.useState<string>(courseParam || "all");
-  const [selectedStatus, setSelectedStatus] = React.useState<string>(statusParam || "all");
-  const [selectedPriority, setSelectedPriority] = React.useState<string>("all");
-  const [selectedDateRange, setSelectedDateRange] = React.useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = React.useState<string>(normalizeStatus(statusParam));
+  const [selectedPriority, setSelectedPriority] = React.useState<string>(priorityParam || "all");
+  const [selectedDateRange, setSelectedDateRange] = React.useState<string>(normalizeDateRange(dateRangeParam));
   const [sortBy, setSortBy] = React.useState<string>("deadline_asc");
   const [viewMode, setViewMode] = React.useState<"grid" | "table">("grid");
 
@@ -86,13 +109,16 @@ export function AssignmentsClient({
   // Synchronize when query params change
   React.useEffect(() => {
     const s = searchParams.get("status");
-    if (s) {
-      setSelectedStatus(s);
-    }
+    setSelectedStatus(normalizeStatus(s));
+
     const c = searchParams.get("course");
-    if (c) {
-      setSelectedCourse(c);
-    }
+    setSelectedCourse(c || "all");
+
+    const dr = searchParams.get("dateRange") || searchParams.get("timeframe");
+    setSelectedDateRange(normalizeDateRange(dr));
+
+    const p = searchParams.get("priority");
+    setSelectedPriority(p || "all");
   }, [searchParams]);
 
   // Filter & Search Logic
@@ -101,6 +127,10 @@ export function AssignmentsClient({
 
     return assignments
       .filter((a) => {
+        const deadlineInfo = getDeadlineInfo(a.due_date, a.due_time, a.status);
+        const isCompleted = a.status === "Completed" || a.progress === 100;
+        const isOverdue = !isCompleted && (a.status === "Overdue" || deadlineInfo.isOverdue);
+
         // Search
         if (search) {
           const q = search.toLowerCase();
@@ -116,8 +146,18 @@ export function AssignmentsClient({
         }
 
         // Status filter
-        if (selectedStatus !== "all" && a.status !== selectedStatus) {
-          return false;
+        if (selectedStatus !== "all") {
+          if (selectedStatus === "Overdue") {
+            if (!isOverdue) return false;
+          } else if (selectedStatus === "Completed") {
+            if (!isCompleted) return false;
+          } else if (selectedStatus === "In Progress") {
+            if (a.status !== "In Progress" || isCompleted) return false;
+          } else if (selectedStatus === "Not Started") {
+            if (a.status !== "Not Started" || isCompleted) return false;
+          } else if (a.status !== selectedStatus) {
+            return false;
+          }
         }
 
         // Priority filter
@@ -139,7 +179,7 @@ export function AssignmentsClient({
           if (selectedDateRange === "this_week" && (daysDiff < 0 || daysDiff > 7)) {
             return false;
           }
-          if (selectedDateRange === "overdue" && (daysDiff >= 0 || a.status === "Completed")) {
+          if (selectedDateRange === "overdue" && !isOverdue) {
             return false;
           }
           if (selectedDateRange === "upcoming" && daysDiff < 0) {
@@ -255,6 +295,7 @@ export function AssignmentsClient({
     setSelectedPriority("all");
     setSelectedDateRange("all");
     setSortBy("deadline_asc");
+    router.replace("/assignments");
   };
 
   const hasActiveFilters =
@@ -539,17 +580,35 @@ export function AssignmentsClient({
                           getPriorityBadgeStyle(assignment.priority)
                         )}
                       >
-                        {assignment.priority}
+                        {assignment.priority === "High"
+                          ? t.priorities.high
+                          : assignment.priority === "Medium"
+                          ? t.priorities.medium
+                          : t.priorities.low}
                       </span>
                     </td>
                     <td className="p-3.5 whitespace-nowrap">
                       <span
                         className={cn(
                           "px-2 py-0.5 rounded text-[10px] border font-medium",
-                          getStatusBadgeStyle(assignment.status)
+                          getStatusBadgeStyle(
+                            isCompleted
+                              ? "Completed"
+                              : deadline.isOverdue
+                              ? "Overdue"
+                              : assignment.status
+                          )
                         )}
                       >
-                        {assignment.status}
+                        {isCompleted
+                          ? t.statuses.completed
+                          : deadline.isOverdue
+                          ? t.statuses.overdue
+                          : assignment.status === "In Progress"
+                          ? t.statuses.inProgress
+                          : assignment.status === "Overdue"
+                          ? t.statuses.overdue
+                          : t.statuses.notStarted}
                       </span>
                     </td>
                     <td className="p-3.5 w-28">
