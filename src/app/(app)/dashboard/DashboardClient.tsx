@@ -38,7 +38,18 @@ export function DashboardClient({
   const [metrics, setMetrics] = React.useState<DashboardMetrics>(initialMetrics);
   const [isSeeding, setIsSeeding] = React.useState(false);
 
-  const { profile, courses, refreshCourses, openCreateAssignment, openCreateCourse } = useApp();
+  const [seedError, setSeedError] = React.useState<string | null>(null);
+  const [seedSuccess, setSeedSuccess] = React.useState<string | null>(null);
+
+  const {
+    profile,
+    isTeacher,
+    courses,
+    refreshCourses,
+    openCreateAssignment,
+    openCreateCourse,
+    openJoinCourse,
+  } = useApp();
   const router = useRouter();
 
   // Sync state with incoming props
@@ -48,39 +59,24 @@ export function DashboardClient({
   }, [initialAssignments, initialMetrics]);
 
   // Determine Today's Focus assignment:
-  // Priority: 1. Incomplete Overdue -> 2. Incomplete Due Today -> 3. High Priority Incomplete -> 4. Earliest Incomplete
   const todaysFocusAssignment = React.useMemo(() => {
     const incomplete = assignments.filter((a) => a.status !== "Completed" && a.progress < 100);
     if (incomplete.length === 0) return null;
 
-    const now = new Date();
+    // 1. Highest priority active item
+    const highPriority = incomplete.find((a) => a.priority === "High");
+    if (highPriority) return highPriority;
 
-    // 1. Overdue incomplete
-    const overdue = incomplete.find((a) => {
-      try {
-        const d = parseISO(a.due_date);
-        return differenceInCalendarDays(d, now) < 0 || (differenceInCalendarDays(d, now) === 0 && a.status === "Overdue");
-      } catch {
-        return false;
-      }
+    // 2. Urgent / Due today or tomorrow
+    const today = new Date();
+    const urgent = incomplete.find((a) => {
+      const deadline = parseISO(a.due_date);
+      const diff = differenceInCalendarDays(deadline, today);
+      return diff <= 1 && !isPast(deadline);
     });
-    if (overdue) return overdue;
+    if (urgent) return urgent;
 
-    // 2. Due today
-    const dueToday = incomplete.find((a) => {
-      try {
-        const d = parseISO(a.due_date);
-        return isToday(d);
-      } catch {
-        return false;
-      }
-    });
-    if (dueToday) return dueToday;
-
-    // 3. High priority
-    const highPri = incomplete.find((a) => a.priority === "High");
-    if (highPri) return highPri;
-
+    // 3. Fallback to first incomplete
     return incomplete[0];
   }, [assignments]);
 
@@ -107,51 +103,78 @@ export function DashboardClient({
   const handleSeedDemo = async () => {
     try {
       setIsSeeding(true);
-      await seedSampleData();
+      setSeedError(null);
+      setSeedSuccess(null);
+      const result = await seedSampleData();
       await refreshCourses();
+      setSeedSuccess(
+        `Demo data successfully created (${result.coursesCount} courses, ${result.assignmentsCount} assignments).`
+      );
       router.refresh();
-    } catch (err) {
-      console.error("Error seeding demo data:", err);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("Error seeding demo data:", errorMsg);
+      setSeedError(errorMsg);
     } finally {
       setIsSeeding(false);
     }
   };
 
-  const displayName = profile?.display_name || "Student";
+  const displayName = profile?.display_name || (isTeacher ? "Instructor" : "Student");
 
   return (
     <div className="space-y-5 animate-fade-in max-w-[1720px] mx-auto pb-10">
       {/* Top Header */}
       <DashboardHeader
         displayName={displayName}
+        isTeacher={isTeacher}
         onCreateAssignment={openCreateAssignment}
         onCreateCourse={openCreateCourse}
+        onJoinCourse={openJoinCourse}
       />
 
       {/* Demo Data Seeder Banner if user has 0 items */}
       {courses.length === 0 && assignments.length === 0 && (
-        <div className="rounded-2xl border border-purple-800/40 bg-gradient-to-r from-purple-950/40 via-[#0D0D0D] to-[#0A0A0A] p-5 shadow-purple-glow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-purple-300 text-xs font-semibold uppercase tracking-wider">
-              <Sparkles className="h-4 w-4 text-purple-400" />
-              <span>{t.dashboard.quickStart.badge}</span>
+        <div className="rounded-2xl border border-purple-800/40 bg-gradient-to-r from-purple-950/40 via-[#0D0D0D] to-[#0A0A0A] p-5 shadow-purple-glow-sm space-y-3">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-purple-300 text-xs font-semibold uppercase tracking-wider">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                <span>{t.dashboard.quickStart.badge}</span>
+              </div>
+              <h3 className="text-sm font-bold text-white">
+                {t.dashboard.quickStart.title}
+              </h3>
+              <p className="text-xs text-zinc-400 max-w-xl">
+                {isTeacher
+                  ? "Initialize sample courses, distribute assignments, and populate enrolled student submissions for grading."
+                  : "Enroll in sample classes and load coursework to test submissions and deadlines."}
+              </p>
             </div>
-            <h3 className="text-sm font-bold text-white">
-              {t.dashboard.quickStart.title}
-            </h3>
-            <p className="text-xs text-zinc-400 max-w-xl">
-              {t.dashboard.quickStart.description}
-            </p>
+            <Button
+              onClick={handleSeedDemo}
+              isLoading={isSeeding}
+              size="sm"
+              className="shrink-0"
+            >
+              <Database className="h-3.5 w-3.5" />
+              <span>{isSeeding ? t.dashboard.quickStart.seeding : t.dashboard.quickStart.button}</span>
+            </Button>
           </div>
-          <Button
-            onClick={handleSeedDemo}
-            isLoading={isSeeding}
-            size="sm"
-            className="shrink-0"
-          >
-            <Database className="h-3.5 w-3.5" />
-            <span>{isSeeding ? t.dashboard.quickStart.seeding : t.dashboard.quickStart.button}</span>
-          </Button>
+
+          {seedError && (
+            <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-red-300 text-xs flex items-center gap-2">
+              <span className="font-semibold">Error:</span>
+              <span>{seedError}</span>
+            </div>
+          )}
+
+          {seedSuccess && (
+            <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-emerald-300 text-xs flex items-center gap-2">
+              <span className="font-semibold">Success:</span>
+              <span>{seedSuccess}</span>
+            </div>
+          )}
         </div>
       )}
 

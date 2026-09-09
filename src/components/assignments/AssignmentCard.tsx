@@ -109,52 +109,54 @@ export function AssignmentCard({
             </span>
           )}
 
-          {/* Actions menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-[#1A1A1A] transition-colors"
-              title="Assignment Actions"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
+          {/* Actions menu (only if manageable) */}
+          {(onEdit || onDelete) && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-[#1A1A1A] transition-colors"
+                title="Assignment Actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[#262626] bg-[#121212] p-1 shadow-xl z-20 animate-fade-in text-xs">
-                <Link
-                  href={`/assignments/${assignment.id}`}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>{t.common.viewDetails}</span>
-                </Link>
-                {onEdit && (
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      onEdit(assignment);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white text-left"
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[#262626] bg-[#121212] p-1 shadow-xl z-20 animate-fade-in text-xs">
+                  <Link
+                    href={`/assignments/${assignment.id}`}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white"
                   >
-                    <Edit2 className="h-3.5 w-3.5" />
-                    <span>{t.common.edit}</span>
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      onDelete(assignment);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-red-400 hover:bg-red-950/40 text-left"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>{t.common.delete}</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>{t.common.viewDetails}</span>
+                  </Link>
+                  {onEdit && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onEdit(assignment);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white text-left"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      <span>{t.common.edit}</span>
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onDelete(assignment);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-red-400 hover:bg-red-950/40 text-left"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>{t.common.delete}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Title & Quick Toggle */}

@@ -16,6 +16,9 @@ import {
   AlertTriangle,
   ChevronRight,
   ChevronDown,
+  GraduationCap,
+  School,
+  KeyRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/types/database";
@@ -27,15 +30,17 @@ interface SidebarProps {
   onOpenCreateAssignment?: () => void;
 }
 
-export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
+export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [showCreateMenu, setShowCreateMenu] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const supabase = createClient();
-  const { courses, overdueCount, openCreateCourse } = useApp();
-  const { t } = useLanguage();
+  const { profile: appProfile, courses, overdueCount, openCreateCourse, openJoinCourse, isTeacher } = useApp();
+  const { language, t } = useLanguage();
+
+  const effectiveProfile = appProfile || propProfile;
 
   // Close create dropdown when clicking outside
   React.useEffect(() => {
@@ -97,77 +102,121 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
     },
   ];
 
-  const displayName = profile?.display_name || "Student";
+  const displayName =
+    effectiveProfile?.display_name || (isTeacher ? "Instructor" : "Student");
   const userInitial = displayName.charAt(0).toUpperCase();
 
   return (
-    <aside className="hidden md:flex h-screen w-64 flex-col justify-between border-r border-[#141414] bg-[#000000] p-4 fixed left-0 top-0 z-30 select-none">
+    <aside className="hidden md:flex h-screen w-64 flex-col justify-between border-r border-[#1E1E22] bg-[#000000] p-4 fixed left-0 top-0 z-30 select-none">
       {/* Brand & Quick Actions */}
-      <div className="space-y-6">
-        {/* Logo Header */}
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-3 px-1 py-1 group transition-all"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-400 shadow-purple-glow-sm group-hover:border-purple-400 group-hover:shadow-purple-glow transition-all">
-            <Sparkles className="h-4 w-4 text-purple-300" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-base font-bold tracking-tight text-white">
-                Deadline
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-950/90 text-purple-300 border border-purple-700/50 uppercase tracking-wide">
-                PRO
-              </span>
-            </div>
-            <p className="text-[11px] text-zinc-500 font-normal">Assignment Hub</p>
-          </div>
-        </Link>
+      <div className="space-y-5">
+        {/* Brand Header & Role Indicator */}
+        <div className="px-1 py-0.5">
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2.5 group min-w-0"
+            >
+              <div
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-200 shrink-0",
+                  isTeacher
+                    ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.35)]"
+                    : "bg-purple-950/60 border-purple-500/40 text-purple-300 shadow-purple-glow-sm group-hover:border-purple-400 group-hover:shadow-purple-glow"
+                )}
+              >
+                {isTeacher ? (
+                  <School className="h-4 w-4 text-emerald-300" />
+                ) : (
+                  <Sparkles className="h-4 w-4 text-purple-300" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <span className="text-base font-bold tracking-tight text-white block leading-tight">
+                  Deadline
+                </span>
+                <span className="text-[11px] text-zinc-400 font-normal block leading-tight truncate">
+                  {isTeacher
+                    ? (language === "id" ? "Konsol Pengajar" : "Instructor Console")
+                    : (language === "id" ? "Portal Mahasiswa" : "Assignment Hub")}
+                </span>
+              </div>
+            </Link>
 
-        {/* Primary Create Button with dropdown */}
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setShowCreateMenu((prev) => !prev)}
-            className="w-full flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-medium text-xs py-2.5 px-3.5 transition-all duration-200 shadow-purple-glow-sm hover:shadow-purple-glow active:scale-[0.98]"
-          >
-            <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              <span className="font-semibold text-xs">{t.nav.quickAction}</span>
-            </div>
-            <ChevronDown
+            {/* Role Badge Indicator */}
+            <div
               className={cn(
-                "h-3.5 w-3.5 opacity-80 transition-transform duration-200",
-                showCreateMenu && "rotate-180"
+                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap",
+                isTeacher
+                  ? "bg-emerald-950/90 text-emerald-300 border-emerald-700/60 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                  : "bg-purple-950/90 text-purple-300 border-purple-700/60 shadow-purple-glow-sm"
               )}
-            />
-          </button>
-
-          {showCreateMenu && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border border-[#242424] bg-[#0C0C0C] p-1.5 shadow-2xl z-50 animate-scale-up">
-              <button
-                onClick={() => {
-                  setShowCreateMenu(false);
-                  onOpenCreateAssignment?.();
-                }}
-                className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-200 hover:bg-purple-950/40 hover:text-purple-300 transition-colors text-left font-medium"
-              >
-                <CheckSquare className="h-3.5 w-3.5 text-purple-400" />
-                <span>{t.nav.newAssignment}</span>
-              </button>
-              <button
-                onClick={() => {
-                  setShowCreateMenu(false);
-                  openCreateCourse();
-                }}
-                className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-200 hover:bg-purple-950/40 hover:text-purple-300 transition-colors text-left font-medium"
-              >
-                <BookOpen className="h-3.5 w-3.5 text-blue-400" />
-                <span>{t.nav.newCourse}</span>
-              </button>
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full animate-pulse shrink-0",
+                  isTeacher ? "bg-emerald-400" : "bg-purple-400"
+                )}
+              />
+              <span>{isTeacher ? t.auth.roleBadgeTeacher : t.auth.roleBadgeStudent}</span>
             </div>
-          )}
+          </div>
         </div>
+
+        {/* Action Button: Teacher (Instructor Actions) vs Student (Join Class) */}
+        {!isTeacher ? (
+          <button
+            onClick={openJoinCourse}
+            className="w-full flex items-center justify-center gap-2 rounded-xl text-white font-semibold text-xs py-2.5 px-3.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 shadow-purple-glow-sm hover:shadow-purple-glow transition-all duration-200 active:scale-[0.98]"
+          >
+            <KeyRound className="h-4 w-4 text-purple-200" />
+            <span>{language === "id" ? "Gabung dengan Kode" : "Join Class with Code"}</span>
+          </button>
+        ) : (
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setShowCreateMenu((prev) => !prev)}
+              className="w-full flex items-center justify-between gap-2 rounded-xl text-white font-medium text-xs py-2.5 px-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                <span className="font-semibold text-xs">{language === "id" ? "Aksi Pengajar" : "Instructor Actions"}</span>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 opacity-80 transition-transform duration-200",
+                  showCreateMenu && "rotate-180"
+                )}
+              />
+            </button>
+
+            {showCreateMenu && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border border-[#242424] bg-[#0C0C0C] p-1.5 shadow-2xl z-50 animate-scale-up">
+                <button
+                  onClick={() => {
+                    setShowCreateMenu(false);
+                    onOpenCreateAssignment?.();
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-200 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors text-left font-medium"
+                >
+                  <CheckSquare className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>{language === "id" ? "Beri Tugas Baru" : "Give New Assignment"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateMenu(false);
+                    openCreateCourse();
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-200 hover:bg-teal-950/40 hover:text-teal-300 transition-colors text-left font-medium"
+                >
+                  <BookOpen className="h-3.5 w-3.5 text-teal-400" />
+                  <span>{t.nav.newCourse}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
 
         {/* Navigation Items */}
         <nav className="space-y-1">
@@ -190,13 +239,22 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
               >
                 <div className="flex items-center gap-3">
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-purple-500 shadow-purple-glow" />
+                    <div
+                      className={cn(
+                        "absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full",
+                        isTeacher
+                          ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                          : "bg-purple-500 shadow-purple-glow"
+                      )}
+                    />
                   )}
                   <Icon
                     className={cn(
                       "h-4 w-4 transition-colors",
                       isActive
-                        ? "text-purple-400"
+                        ? isTeacher
+                          ? "text-emerald-400"
+                          : "text-purple-400"
                         : "text-zinc-500 group-hover:text-zinc-300"
                     )}
                   />
@@ -208,7 +266,9 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
                     className={cn(
                       "text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors",
                       isActive
-                        ? "bg-purple-950/80 text-purple-300 border-purple-800/50"
+                        ? isTeacher
+                          ? "bg-emerald-950/80 text-emerald-300 border-emerald-800/50"
+                          : "bg-purple-950/80 text-purple-300 border-purple-800/50"
                         : "bg-[#111111] text-zinc-400 border-[#1E1E1E]"
                     )}
                   >
@@ -222,7 +282,7 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
       </div>
 
       {/* Bottom Section: Overdue Alert & User Profile */}
-      <div className="space-y-3 pt-4">
+      <div className="space-y-3 pt-3 border-t border-[#18181C]">
         {/* Overdue alert card */}
         {overdueCount > 0 && (
           <Link
@@ -247,40 +307,90 @@ export function Sidebar({ profile, onOpenCreateAssignment }: SidebarProps) {
         )}
 
         {/* User Card */}
-        <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#080808] border border-[#181818]">
-          <Link
-            href="/settings"
-            className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80 transition-opacity"
-          >
-            <div className="h-8 w-8 rounded-full bg-purple-950/80 border border-purple-700/60 flex items-center justify-center text-purple-200 shrink-0 overflow-hidden text-xs font-bold shadow-purple-glow-sm">
-              {profile?.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.avatar_url}
-                  alt={displayName}
-                  className="h-full w-full object-cover"
+        <div
+          className={cn(
+            "rounded-xl border p-2.5 transition-all bg-[#090909]",
+            isTeacher
+              ? "border-emerald-950/80 hover:border-emerald-800/60"
+              : "border-purple-950/80 hover:border-purple-800/60"
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              href="/settings"
+              className="flex items-center gap-2.5 min-w-0 flex-1 group"
+            >
+              {/* Avatar */}
+              <div
+                className={cn(
+                  "relative h-9 w-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden text-xs font-bold border transition-all",
+                  isTeacher
+                    ? "bg-emerald-950/90 border-emerald-600/50 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] group-hover:border-emerald-400"
+                    : "bg-purple-950/90 border-purple-600/50 text-purple-300 shadow-purple-glow-sm group-hover:border-purple-400"
+                )}
+              >
+                {effectiveProfile?.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={effectiveProfile.avatar_url}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="font-bold text-xs">{userInitial}</span>
+                )}
+                {/* Role indicator mini dot on avatar */}
+                <span
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-black",
+                    isTeacher ? "bg-emerald-400" : "bg-purple-400"
+                  )}
                 />
-              ) : (
-                <span>{userInitial}</span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-zinc-200 truncate">
-                {displayName}
-              </p>
-              <p className="text-[10px] text-zinc-500 truncate">
-                {profile?.email || "student@deadline.app"}
-              </p>
-            </div>
-          </Link>
-          <button
-            onClick={handleSignOut}
-            disabled={isLoggingOut}
-            title={t.nav.signOut}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+              </div>
+
+              {/* User info */}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
+                  {displayName}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    className={cn(
+                      "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider inline-flex items-center gap-1 border shrink-0 whitespace-nowrap",
+                      isTeacher
+                        ? "bg-emerald-950/90 text-emerald-300 border-emerald-800/60"
+                        : "bg-purple-950/90 text-purple-300 border-purple-800/60"
+                    )}
+                  >
+                    {isTeacher ? (
+                      <School className="h-2.5 w-2.5" />
+                    ) : (
+                      <GraduationCap className="h-2.5 w-2.5" />
+                    )}
+                    <span>{isTeacher ? t.auth.roleBadgeTeacher : t.auth.roleBadgeStudent}</span>
+                  </span>
+                  {effectiveProfile?.institution && (
+                    <span
+                      className="text-[10px] text-zinc-500 truncate min-w-0"
+                      title={effectiveProfile.institution}
+                    >
+                      • {effectiveProfile.institution}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={handleSignOut}
+              disabled={isLoggingOut}
+              title={t.nav.signOut}
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition-colors shrink-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

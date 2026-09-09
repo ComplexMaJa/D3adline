@@ -108,6 +108,13 @@ export function CourseDialog({
         if (error) throw error;
         if (onSaved && data) onSaved(data);
       } else {
+        // Generate random 6-character alphanumeric join code
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let newJoinCode = "";
+        for (let i = 0; i < 6; i++) {
+          newJoinCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
         const { data, error } = await supabase
           .from("courses")
           .insert({
@@ -117,6 +124,7 @@ export function CourseDialog({
             instructor: instructor.trim() || null,
             description: description.trim() || null,
             color,
+            join_code: newJoinCode,
           })
           .select()
           .single();

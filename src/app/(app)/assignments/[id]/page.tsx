@@ -46,10 +46,32 @@ export default async function AssignmentDetailPage({
     .select("*")
     .order("name", { ascending: true });
 
+  // Fetch all submissions for this assignment with student profiles
+  const { data: submissionsData } = await supabase
+    .from("assignment_submissions")
+    .select(`
+      *,
+      student:profiles(*)
+    `)
+    .eq("assignment_id", id)
+    .order("created_at", { ascending: false });
+
+  // Fetch enrolled students for this course with profiles
+  const { data: enrollmentsData } = await supabase
+    .from("course_enrollments")
+    .select(`
+      *,
+      student:profiles(*)
+    `)
+    .eq("course_id", assignmentData.course_id)
+    .order("enrolled_at", { ascending: true });
+
   const assignment = assignmentData as Assignment;
   const subtasks = (subtasksData || []) as Subtask[];
   const attachments = (attachmentsData || []) as Attachment[];
   const courses = (coursesData || []) as Course[];
+  const submissions = (submissionsData || []) as any[];
+  const enrollments = (enrollmentsData || []) as any[];
 
   return (
     <AssignmentDetailClient
@@ -57,6 +79,8 @@ export default async function AssignmentDetailPage({
       initialSubtasks={subtasks}
       initialAttachments={attachments}
       courses={courses}
+      initialSubmissions={submissions}
+      initialEnrollments={enrollments}
     />
   );
 }

@@ -11,9 +11,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Course } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/components/layout/AppShell";
-import { Plus, Search, BookOpen } from "lucide-react";
+import { Plus, Search, BookOpen, KeyRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { cn } from "@/lib/utils";
 
 interface CoursesClientProps {
   initialCourses: Course[];
@@ -28,7 +29,7 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
   const [courseToDelete, setCourseToDelete] = React.useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const { refreshCourses, openCreateCourse } = useApp();
+  const { profile, refreshCourses, openCreateCourse, openJoinCourse, isTeacher } = useApp();
   const supabase = createClient();
   const router = useRouter();
 
@@ -86,10 +87,27 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
         title={t.courses.title}
         description={t.courses.description}
         action={
-          <Button onClick={openCreateCourse} size="sm">
-            <Plus className="h-4 w-4" />
-            <span>{t.courses.newCourseBtn}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isTeacher ? (
+              <Button
+                onClick={openJoinCourse}
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-500 text-white shadow-purple-glow-sm"
+              >
+                <KeyRound className="h-4 w-4" />
+                <span>{language === "id" ? "Gabung dengan Kode" : "Join with Code"}</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={openCreateCourse}
+                size="sm"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>{t.courses.newCourseBtn}</span>
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -103,17 +121,16 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
             leftIcon={<Search className="h-4 w-4" />}
           />
         </div>
-        <div className="text-xs text-zinc-400 self-end sm:self-center">
-          {t.courses.showing} <span className="font-semibold text-zinc-200">{filteredCourses.length}</span>{" "}
-          {t.courses.of} {courses.length} {t.courses.coursesUnit}
-        </div>
+        <span className="text-xs text-zinc-500 font-mono self-end sm:self-auto">
+          {filteredCourses.length} {t.courses.coursesUnit}
+        </span>
       </div>
 
-      {/* Courses Grid */}
+      {/* Grid of Course Cards */}
       {filteredCourses.length === 0 ? (
         <EmptyState
           icon={<BookOpen className="h-6 w-6 text-purple-400" />}
-          title={searchQuery ? (isId ? "Tidak ada mata kuliah yang cocok" : "No courses match your search") : t.courses.emptyTitle}
+          title={searchQuery ? (isId ? "Tidak ada mata kuliah ditemukan" : "No courses found") : t.courses.emptyTitle}
           description={
             searchQuery
               ? (isId ? `Tidak ditemukan mata kuliah "${searchQuery}". Silakan coba kata kunci lain.` : `No subjects matching "${searchQuery}". Try a different keyword.`)
@@ -128,10 +145,15 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
               >
                 {t.courses.clearSearch}
               </Button>
-            ) : (
+            ) : isTeacher ? (
               <Button size="sm" onClick={openCreateCourse}>
                 <Plus className="h-4 w-4" />
-                <span>{t.courses.createAssignment}</span>
+                <span>{t.courses.newCourseBtn}</span>
+              </Button>
+            ) : (
+              <Button size="sm" onClick={openJoinCourse}>
+                <KeyRound className="h-4 w-4" />
+                <span>{language === "id" ? "Gabung dengan Kode" : "Join with Code"}</span>
               </Button>
             )
           }
@@ -142,8 +164,8 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
             <CourseCard
               key={course.id}
               course={course}
-              onEdit={handleEdit}
-              onDelete={handleDeletePrompt}
+              onEdit={isTeacher && course.user_id === profile?.id ? handleEdit : undefined}
+              onDelete={isTeacher && course.user_id === profile?.id ? handleDeletePrompt : undefined}
             />
           ))}
         </div>

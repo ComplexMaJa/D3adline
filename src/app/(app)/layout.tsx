@@ -26,18 +26,26 @@ export default async function AppLayout({
     .eq("id", user.id)
     .single();
 
-  const profile: Profile = profileData || {
-    id: user.id,
-    email: user.email || null,
-    display_name:
-      user.user_metadata?.display_name ||
-      user.user_metadata?.full_name ||
-      user.email?.split("@")[0] ||
-      "Student",
-    avatar_url: user.user_metadata?.avatar_url || null,
-    created_at: user.created_at,
-    updated_at: user.created_at,
-  };
+  const profile: Profile = profileData
+    ? {
+        ...profileData,
+        role: profileData.role || (user.user_metadata?.role as any) || "student",
+      }
+    : {
+        id: user.id,
+        email: user.email || null,
+        display_name:
+          user.user_metadata?.display_name ||
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          (user.user_metadata?.role === "teacher" ? "Instructor" : "Student"),
+        avatar_url: user.user_metadata?.avatar_url || null,
+        role: (user.user_metadata?.role as any) || "student",
+        institution: user.user_metadata?.institution || null,
+        bio: user.user_metadata?.bio || null,
+        created_at: user.created_at,
+        updated_at: user.created_at,
+      };
 
   // Fetch initial courses with counts
   const { data: rawCourses } = await supabase

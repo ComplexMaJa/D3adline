@@ -16,13 +16,17 @@ import {
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
+import { useApp } from "@/components/layout/AppShell";
+import { KeyRound } from "lucide-react";
+
 interface MobileNavProps {
   onOpenCreateAssignment?: () => void;
 }
 
 export function MobileNav({ onOpenCreateAssignment }: MobileNavProps) {
   const pathname = usePathname();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { isTeacher, openJoinCourse } = useApp();
 
   const mobileItems = [
     {
@@ -66,13 +70,23 @@ export function MobileNav({ onOpenCreateAssignment }: MobileNavProps) {
         </Link>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
-          {onOpenCreateAssignment && (
+          {isTeacher ? (
+            onOpenCreateAssignment && (
+              <button
+                onClick={onOpenCreateAssignment}
+                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold px-2.5 py-1.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{language === "id" ? "Beri Tugas" : "Give"}</span>
+              </button>
+            )
+          ) : (
             <button
-              onClick={onOpenCreateAssignment}
+              onClick={openJoinCourse}
               className="flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-2.5 py-1.5 shadow-purple-glow-sm"
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{t.common.create}</span>
+              <KeyRound className="h-3.5 w-3.5" />
+              <span>{language === "id" ? "Gabung" : "Join"}</span>
             </button>
           )}
         </div>

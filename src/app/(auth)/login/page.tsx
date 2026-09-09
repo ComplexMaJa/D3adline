@@ -58,7 +58,7 @@ function LoginForm() {
       <CardHeader className="space-y-1 pb-4">
         <CardTitle className="text-lg text-zinc-100">Sign In</CardTitle>
         <CardDescription>
-          Enter your student credentials to access your dashboard
+          Enter your credentials to access your student or instructor dashboard
         </CardDescription>
       </CardHeader>
 
@@ -77,7 +77,7 @@ function LoginForm() {
             </label>
             <Input
               type="email"
-              placeholder="student@university.edu"
+              placeholder="you@university.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               leftIcon={<Mail className="h-4 w-4" />}

@@ -10,11 +10,27 @@ export interface TranslationDictionary {
     quickAction: string;
     newAssignment: string;
     newCourse: string;
+    joinCourse: string;
+    roleStudent: string;
+    roleTeacher: string;
     overdueNotice: string;
     overdueCount: string;
     viewAllOverdue: string;
     signOut: string;
     brandSubtitle: string;
+  };
+  auth: {
+    roleSelectTitle: string;
+    roleSelectDesc: string;
+    studentRoleTitle: string;
+    studentRoleDesc: string;
+    teacherRoleTitle: string;
+    teacherRoleDesc: string;
+    institutionLabel: string;
+    institutionPlaceholder: string;
+    roleBadgeStudent: string;
+    roleBadgeTeacher: string;
+    roleBadgeAdmin: string;
   };
   common: {
     save: string;
@@ -224,6 +240,25 @@ export interface TranslationDictionary {
       deleteConfirmDesc: string;
       fileSizeExceeded: string;
       blockedExtension: string;
+      submissionsTitle: string;
+      yourSubmission: string;
+      submissionNote: string;
+      submissionPlaceholder: string;
+      turnInBtn: string;
+      updateSubmissionBtn: string;
+      submittedAt: string;
+      notSubmitted: string;
+      graded: string;
+      ungraded: string;
+      gradeLabel: string;
+      feedbackLabel: string;
+      gradeSubmission: string;
+      saveGradeBtn: string;
+      savingGrade: string;
+      gradePlaceholder: string;
+      feedbackPlaceholder: string;
+      enrolledStudentsCount: string;
+      submissionsCount: string;
     };
   };
   courses: {
@@ -260,6 +295,15 @@ export interface TranslationDictionary {
     noAssignmentsTitle: string;
     noAssignmentsDesc: string;
     newTaskBtn: string;
+    inviteCode: string;
+    copyCode: string;
+    codeCopied: string;
+    shareCodeDesc: string;
+    rosterTitle: string;
+    rosterEmpty: string;
+    rosterCount: string;
+    enrolledStatus: string;
+    enrolledOn: string;
   };
   calendar: {
     title: string;
@@ -288,6 +332,11 @@ export interface TranslationDictionary {
     displayNamePlaceholder: string;
     emailAddress: string;
     avatarUrl: string;
+    roleLabel: string;
+    institutionLabel: string;
+    institutionPlaceholder: string;
+    bioLabel: string;
+    bioPlaceholder: string;
     saveProfileBtn: string;
     profileUpdated: string;
     languageTitle: string;

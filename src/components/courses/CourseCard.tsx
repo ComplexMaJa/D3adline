@@ -47,6 +47,18 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
       ? Math.round((completed / total) * 100)
       : 0;
 
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (course.join_code) {
+      navigator.clipboard.writeText(course.join_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="group relative rounded-xl border border-[#1A1A1A] bg-[#080808] p-5 transition-all duration-200 hover:border-[#2C2C2C] hover:bg-[#0D0D0D] flex flex-col justify-between overflow-hidden">
       {/* Top accent border strip */}
@@ -59,7 +71,7 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-2">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               {course.code && (
                 <span
                   className="px-2 py-0.5 rounded text-[11px] font-bold font-mono tracking-wide"
@@ -72,6 +84,21 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
                   {course.code}
                 </span>
               )}
+              {course.join_code && (
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  title="Click to copy class invite code"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-zinc-900 border border-zinc-700/60 text-zinc-300 hover:text-white hover:border-purple-500/50 hover:bg-purple-950/30 transition-all"
+                >
+                  <span>Code: {course.join_code}</span>
+                  {copied ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <span className="text-[9px] text-zinc-500">📋</span>
+                  )}
+                </button>
+              )}
             </div>
             <Link
               href={`/courses/${course.id}`}
@@ -81,46 +108,49 @@ export function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
             </Link>
           </div>
 
-          {/* Action Menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-[#181818] transition-colors"
-              title="Course Actions"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
+          {/* Action Menu (only shown if user has edit/delete permissions) */}
+          {(onEdit || onDelete) && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-[#181818] transition-colors"
+                title="Course Actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg border border-[#242424] bg-[#121212] p-1 shadow-xl z-20 animate-fade-in text-xs">
-                {onEdit && (
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      onEdit(course);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white text-left"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                    <span>{t.common.edit}</span>
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      onDelete(course);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-red-400 hover:bg-red-950/40 text-left"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>{t.common.delete}</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 w-32 rounded-lg border border-[#242424] bg-[#121212] p-1 shadow-xl z-20 animate-fade-in text-xs">
+                  {onEdit && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onEdit(course);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-300 hover:bg-[#1E1E1E] hover:text-white text-left"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      <span>{t.common.edit}</span>
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onDelete(course);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-red-400 hover:bg-red-950/40 text-left"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>{t.common.delete}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
 
         {/* Instructor */}
         {course.instructor && (

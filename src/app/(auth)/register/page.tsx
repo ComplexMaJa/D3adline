@@ -7,10 +7,25 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
-import { Sparkles, Mail, Lock, User, AlertCircle, ArrowRight, CheckCircle } from "lucide-react";
+import {
+  Sparkles,
+  Mail,
+  Lock,
+  User,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle,
+  GraduationCap,
+  School,
+  Building2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { UserRole } from "@/types/database";
 
 export default function RegisterPage() {
+  const [role, setRole] = React.useState<UserRole>("student");
   const [displayName, setDisplayName] = React.useState("");
+  const [institution, setInstitution] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -25,7 +40,7 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (!displayName || !email || !password || !confirmPassword) {
-      setError("Please fill in all fields.");
+      setError("Please fill in all required fields.");
       return;
     }
 
@@ -49,6 +64,8 @@ export default function RegisterPage() {
         options: {
           data: {
             display_name: displayName.trim(),
+            role: role,
+            institution: institution.trim() || null,
           },
         },
       });
@@ -75,7 +92,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden py-12">
       <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md space-y-6 relative z-10 animate-fade-in">
@@ -88,7 +105,7 @@ export default function RegisterPage() {
             Create Your Account
           </h1>
           <p className="text-xs text-zinc-400">
-            Start organizing your courses and tracking assignments today.
+            Join Deadline to organize courses, manage assignments, and conquer deadlines.
           </p>
         </div>
 
@@ -97,7 +114,7 @@ export default function RegisterPage() {
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-lg text-zinc-100">Sign Up</CardTitle>
             <CardDescription>
-              Enter your student details to get started
+              Select your academic role and enter your details
             </CardDescription>
           </CardHeader>
 
@@ -111,6 +128,7 @@ export default function RegisterPage() {
                   Account Created Successfully!
                 </h4>
                 <p className="text-xs text-zinc-400">
+                  Your {role === "teacher" ? "teacher/instructor" : "student"} account is ready.
                   You can now sign in with your email and password.
                 </p>
                 <Button
@@ -129,12 +147,92 @@ export default function RegisterPage() {
                   </div>
                 )}
 
+                {/* Role Selector Cards */}
+                <div>
+                  <label className="block text-xs font-medium text-zinc-300 mb-2">
+                    I am registering as:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Student Card */}
+                    <button
+                      type="button"
+                      onClick={() => setRole("student")}
+                      className={cn(
+                        "flex flex-col items-start p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer relative",
+                        role === "student"
+                          ? "border-purple-500/70 bg-purple-950/30 text-white shadow-purple-glow-sm"
+                          : "border-[#1E1E1E] bg-[#050505] text-zinc-400 hover:border-[#2C2C2C] hover:bg-[#0A0A0A]"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1.5">
+                        <div
+                          className={cn(
+                            "flex h-7 w-7 items-center justify-center rounded-lg border",
+                            role === "student"
+                              ? "bg-purple-600/30 border-purple-500/50 text-purple-300"
+                              : "bg-[#111111] border-[#222222] text-zinc-500"
+                          )}
+                        >
+                          <GraduationCap className="h-4 w-4" />
+                        </div>
+                        {role === "student" && (
+                          <span className="h-2 w-2 rounded-full bg-purple-400 shadow-sm" />
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-zinc-100">
+                        Student
+                      </span>
+                      <span className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
+                        Track deadlines & coursework
+                      </span>
+                    </button>
+
+                    {/* Teacher Card */}
+                    <button
+                      type="button"
+                      onClick={() => setRole("teacher")}
+                      className={cn(
+                        "flex flex-col items-start p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer relative",
+                        role === "teacher"
+                          ? "border-emerald-500/70 bg-emerald-950/30 text-white shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                          : "border-[#1E1E1E] bg-[#050505] text-zinc-400 hover:border-[#2C2C2C] hover:bg-[#0A0A0A]"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1.5">
+                        <div
+                          className={cn(
+                            "flex h-7 w-7 items-center justify-center rounded-lg border",
+                            role === "teacher"
+                              ? "bg-emerald-600/30 border-emerald-500/50 text-emerald-300"
+                              : "bg-[#111111] border-[#222222] text-zinc-500"
+                          )}
+                        >
+                          <School className="h-4 w-4" />
+                        </div>
+                        {role === "teacher" && (
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm" />
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-zinc-100">
+                        Teacher / Instructor
+                      </span>
+                      <span className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
+                        Create classes & assign tasks
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                     Full Name / Display Name
                   </label>
                   <Input
-                    placeholder="e.g. Kidung Mahadewa"
+                    placeholder={
+                      role === "teacher"
+                        ? "e.g. Prof. Robert Hoffman"
+                        : "e.g. Kidung Mahadewa"
+                    }
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     leftIcon={<User className="h-4 w-4" />}
@@ -143,13 +241,31 @@ export default function RegisterPage() {
                   />
                 </div>
 
+                {role === "teacher" && (
+                  <div className="animate-fade-in">
+                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                      University / School / Institution (Optional)
+                    </label>
+                    <Input
+                      placeholder="e.g. Faculty of Engineering or Stanford"
+                      value={institution}
+                      onChange={(e) => setInstitution(e.target.value)}
+                      leftIcon={<Building2 className="h-4 w-4" />}
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                     Email Address
                   </label>
                   <Input
                     type="email"
-                    placeholder="student@university.edu"
+                    placeholder={
+                      role === "teacher"
+                        ? "instructor@university.edu"
+                        : "student@university.edu"
+                    }
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     leftIcon={<Mail className="h-4 w-4" />}
@@ -189,10 +305,18 @@ export default function RegisterPage() {
 
                 <Button
                   type="submit"
-                  className="w-full mt-2"
+                  className={cn(
+                    "w-full mt-2 transition-all duration-200",
+                    role === "teacher" &&
+                      "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border-emerald-500/40 text-white"
+                  )}
                   isLoading={isLoading}
                 >
-                  <span>Create Student Account</span>
+                  <span>
+                    {role === "teacher"
+                      ? "Create Teacher Account"
+                      : "Create Student Account"}
+                  </span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </form>

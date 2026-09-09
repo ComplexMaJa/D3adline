@@ -9,16 +9,30 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch all assignments for user with courses
+  // Fetch all assignments for user with courses and submissions
   const { data: rawAssignments } = await supabase
     .from("assignments")
     .select(`
       *,
-      course:courses(*)
+      course:courses(*),
+      submissions:assignment_submissions(*)
     `)
     .order("due_date", { ascending: true });
 
-  const assignments: Assignment[] = (rawAssignments || []) as Assignment[];
+  const assignments: Assignment[] = ((rawAssignments || []) as any[]).map((a) => {
+    if (user && a.submissions && a.submissions.length > 0) {
+      const mySub = a.submissions.find((s: any) => s.student_id === user.id);
+      if (mySub) {
+        return {
+          ...a,
+          status: mySub.status,
+          progress: mySub.progress,
+        };
+      }
+    }
+    return a;
+  });
+
 
   // Fetch courses with assignment stats
   const { data: rawCourses } = await supabase

@@ -5,7 +5,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AssignmentDialog } from "@/components/forms/AssignmentDialog";
 import { CourseDialog } from "@/components/forms/CourseDialog";
-import { Profile, Course, Assignment } from "@/types/database";
+import { JoinCourseDialog } from "@/components/forms/JoinCourseDialog";
+import { Profile, Course, Assignment, UserRole } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { getDeadlineInfo } from "@/lib/deadline-utils";
 import { useRouter } from "next/navigation";
@@ -19,18 +20,26 @@ interface AppShellProps {
 
 export const AppContext = React.createContext<{
   profile: Profile | null;
+  userRole: UserRole;
+  isTeacher: boolean;
+  isStudent: boolean;
   courses: Course[];
   overdueCount: number;
   refreshCourses: () => Promise<void>;
   openCreateAssignment: (courseId?: string) => void;
   openCreateCourse: () => void;
+  openJoinCourse: () => void;
 }>({
   profile: null,
+  userRole: "student",
+  isTeacher: false,
+  isStudent: true,
   courses: [],
   overdueCount: 0,
   refreshCourses: async () => {},
   openCreateAssignment: () => {},
   openCreateCourse: () => {},
+  openJoinCourse: () => {},
 });
 
 export function useApp() {
@@ -46,6 +55,7 @@ export function AppShell({
   const [courses, setCourses] = React.useState<Course[]>(initialCourses);
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = React.useState(false);
   const [isCourseModalOpen, setIsCourseModalOpen] = React.useState(false);
+  const [isJoinCourseOpen, setIsJoinCourseOpen] = React.useState(false);
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | undefined>();
   const initialFetchDone = React.useRef(false);
 
@@ -110,50 +120,89 @@ export function AppShell({
     initialFetchDone.current = true;
 
     async function loadUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
 
-        if (prof) {
-          setProfile(prof);
-        } else {
-          setProfile({
-            id: user.id,
-            email: user.email || null,
-            display_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "Student",
-            avatar_url: user.user_metadata?.avatar_url || null,
-            created_at: user.created_at,
-            updated_at: user.created_at,
-          });
+          if (prof) {
+            setProfile({
+              ...prof,
+              role: prof.role || (user.user_metadata?.role as any) || "student",
+              institution: prof.institution || user.user_metadata?.institution || null,
+              bio: prof.bio || user.user_metadata?.bio || null,
+            });
+          } else {
+            setProfile((current) => ({
+              id: user.id,
+              email: user.email || null,
+              display_name:
+                user.user_metadata?.display_name ||
+                user.user_metadata?.full_name ||
+                current?.display_name ||
+                user.email?.split("@")[0] ||
+                (user.user_metadata?.role === "teacher" ? "Instructor" : "Student"),
+              avatar_url: user.user_metadata?.avatar_url || current?.avatar_url || null,
+              role: (user.user_metadata?.role as any) || current?.role || "student",
+              institution: user.user_metadata?.institution || current?.institution || null,
+              bio: user.user_metadata?.bio || current?.bio || null,
+              created_at: user.created_at,
+              updated_at: user.created_at,
+            }));
+          }
         }
+      } catch (err) {
+        console.error("Error loading user profile in AppShell:", err);
       }
     }
 
-    if (!profile) {
-      loadUser();
-    }
+    loadUser();
+
+    // Listen for auth changes to keep user role in sync
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        loadUser();
+      }
+    });
+
     if (initialCourses.length === 0) {
       refreshCourses();
     }
-  }, [supabase, profile, initialCourses.length, refreshCourses]);
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, initialCourses.length, refreshCourses]);
 
   const totalOverdueCount = React.useMemo(() => {
     return courses.reduce((acc, c) => acc + (c.overdue_count || 0), 0);
   }, [courses]);
 
+  const userRole: UserRole = profile?.role || "student";
+  const isTeacher = userRole === "teacher" || userRole === "admin";
+  const isStudent = !isTeacher;
+
   const openCreateAssignment = (courseId?: string) => {
+    if (!isTeacher) return;
     setSelectedCourseId(courseId);
     setIsAssignmentModalOpen(true);
   };
 
   const openCreateCourse = () => {
+    if (!isTeacher) return;
     setIsCourseModalOpen(true);
+  };
+
+  const openJoinCourse = () => {
+    setIsJoinCourseOpen(true);
   };
 
   const handleAssignmentSaved = (assignment: Assignment) => {
@@ -171,11 +220,15 @@ export function AppShell({
       <AppContext.Provider
         value={{
           profile,
+          userRole,
+          isTeacher,
+          isStudent,
           courses,
           overdueCount: totalOverdueCount,
           refreshCourses,
           openCreateAssignment,
           openCreateCourse,
+          openJoinCourse,
         }}
       >
         <div className="min-h-screen bg-black text-[#F5F5F5] flex flex-col md:flex-row">
@@ -215,6 +268,15 @@ export function AppShell({
             isOpen={isCourseModalOpen}
             onClose={() => setIsCourseModalOpen(false)}
             onSaved={handleCourseSaved}
+          />
+
+          <JoinCourseDialog
+            isOpen={isJoinCourseOpen}
+            onClose={() => setIsJoinCourseOpen(false)}
+            onJoined={() => {
+              refreshCourses();
+              router.refresh();
+            }}
           />
         </div>
       </AppContext.Provider>

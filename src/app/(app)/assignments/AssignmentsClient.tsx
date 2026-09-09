@@ -34,6 +34,8 @@ import {
   AlertTriangle,
   ArrowUpDown,
   BookOpen,
+  KeyRound,
+  ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -97,7 +99,7 @@ export function AssignmentsClient({
   const [assignmentToDelete, setAssignmentToDelete] = React.useState<Assignment | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const { refreshCourses, openCreateAssignment } = useApp();
+  const { profile, isTeacher, refreshCourses, openCreateAssignment, openJoinCourse } = useApp();
   const { t, language } = useLanguage();
   const supabase = createClient();
   const router = useRouter();
@@ -241,16 +243,31 @@ export function AssignmentsClient({
     );
 
     try {
-      const { error } = await supabase
-        .from("assignments")
-        .update({
-          status: newStatus,
-          progress: newProgress,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", assignment.id);
+      if (isTeacher && assignment.user_id === profile?.id) {
+        const { error } = await supabase
+          .from("assignments")
+          .update({
+            status: newStatus,
+            progress: newProgress,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", assignment.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else if (profile?.id) {
+        const { error } = await supabase
+          .from("assignment_submissions")
+          .upsert({
+            assignment_id: assignment.id,
+            student_id: profile.id,
+            status: newStatus,
+            progress: newProgress,
+            submitted_at: isNowCompleted ? new Date().toISOString() : null,
+          }, { onConflict: "assignment_id,student_id" });
+
+        if (error) throw error;
+      }
+
       await refreshCourses();
       router.refresh();
     } catch (err) {
@@ -311,10 +328,16 @@ export function AssignmentsClient({
         title={t.assignments.title}
         description={t.assignments.description}
         action={
-          <Button onClick={() => openCreateAssignment()} size="sm">
-            <Plus className="h-4 w-4" />
-            <span>{t.assignments.newAssignmentBtn}</span>
-          </Button>
+          isTeacher ? (
+            <Button
+              onClick={() => openCreateAssignment()}
+              size="sm"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>{language === "id" ? "Beri Tugas" : "Give Assignment"}</span>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -464,10 +487,15 @@ export function AssignmentsClient({
               <Button size="sm" variant="outline" onClick={clearFilters}>
                 {t.assignments.clearFilters}
               </Button>
-            ) : (
+            ) : isTeacher ? (
               <Button size="sm" onClick={() => openCreateAssignment()}>
                 <Plus className="h-4 w-4" />
-                <span>{t.assignments.newAssignmentBtn}</span>
+                <span>{language === "id" ? "Beri Tugas Baru" : "Give New Assignment"}</span>
+              </Button>
+            ) : (
+              <Button size="sm" onClick={openJoinCourse}>
+                <KeyRound className="h-4 w-4" />
+                <span>{language === "id" ? "Gabung Kelas" : "Join a Class"}</span>
               </Button>
             )
           }
@@ -480,8 +508,8 @@ export function AssignmentsClient({
               key={assignment.id}
               assignment={assignment}
               onToggleComplete={handleToggleComplete}
-              onEdit={handleEdit}
-              onDelete={(a) => setAssignmentToDelete(a)}
+              onEdit={isTeacher && assignment.user_id === profile?.id ? handleEdit : undefined}
+              onDelete={isTeacher && assignment.user_id === profile?.id ? (a) => setAssignmentToDelete(a) : undefined}
             />
           ))}
         </div>
@@ -628,22 +656,32 @@ export function AssignmentsClient({
                       </div>
                     </td>
                     <td className="p-3.5 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleEdit(assignment)}
-                          className="p-1 rounded text-zinc-500 hover:text-zinc-200 hover:bg-[#181818] transition-colors"
-                          title="Edit"
+                      {isTeacher && assignment.user_id === profile?.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleEdit(assignment)}
+                            className="p-1 rounded text-zinc-500 hover:text-zinc-200 hover:bg-[#181818] transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setAssignmentToDelete(assignment)}
+                            className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/assignments/${assignment.id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-purple-400 hover:text-purple-300 hover:bg-purple-950/40 border border-purple-900/30 transition-colors"
                         >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setAssignmentToDelete(assignment)}
-                          className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                          <span>{language === "id" ? "Buka Tugas" : "Open Task"}</span>
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 );
