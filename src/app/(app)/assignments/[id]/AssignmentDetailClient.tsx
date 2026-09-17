@@ -107,16 +107,19 @@ export function AssignmentDetailClient({
   }, [submissions, profile?.id]);
 
   const [studentNote, setStudentNote] = React.useState(
-    mySubmission?.submission_note || ""
+    mySubmission?.submission_text || mySubmission?.submission_note || ""
   );
   const [studentProgress, setStudentProgress] = React.useState<number>(
     mySubmission?.progress ?? (mySubmission?.status === "Completed" ? 100 : 0)
   );
   const [isSubmittingWork, setIsSubmittingWork] = React.useState(false);
   const [submissionSuccess, setSubmissionSuccess] = React.useState(false);
+  const [submissionError, setSubmissionError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (mySubmission?.submission_note !== undefined && mySubmission?.submission_note !== null) {
+    if (mySubmission?.submission_text !== undefined && mySubmission?.submission_text !== null) {
+      setStudentNote(mySubmission.submission_text);
+    } else if (mySubmission?.submission_note !== undefined && mySubmission?.submission_note !== null) {
       setStudentNote(mySubmission.submission_note);
     }
     if (mySubmission) {
@@ -134,6 +137,7 @@ export function AssignmentDetailClient({
     const now = new Date().toISOString();
 
     try {
+      // Personal progress tracking only - does NOT submit or alter submitted_at
       const { data, error } = await supabase
         .from("assignment_submissions")
         .upsert(
@@ -142,8 +146,9 @@ export function AssignmentDetailClient({
             student_id: profile.id,
             status: newStatus,
             progress: newProg,
+            submission_text: studentNote.trim() || null,
             submission_note: studentNote.trim() || null,
-            submitted_at: newProg === 100 ? (mySubmission?.submitted_at || now) : mySubmission?.submitted_at,
+            submitted_at: mySubmission?.submitted_at ?? null,
             updated_at: now,
           },
           { onConflict: "assignment_id,student_id" }
@@ -165,9 +170,6 @@ export function AssignmentDetailClient({
         });
       }
 
-      if (newProg === 100) {
-        triggerCompletionConfetti();
-      }
       router.refresh();
     } catch (err) {
       console.error("Error updating student progress:", err);
@@ -203,10 +205,26 @@ export function AssignmentDetailClient({
     setFeedbackInput(target.submission?.feedback || "");
   };
 
-  // Student Turn-in Handler
+  // Student Turn-in Handler: Requires real deliverable (written text or file attachment)
   const handleSubmitAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.id) return;
+    setSubmissionError(null);
+
+    const hasText = Boolean(studentNote.trim());
+    const myAttachments = attachments.filter((a) => a.user_id === profile.id);
+    const hasFiles = myAttachments.length > 0;
+
+    // Reject empty submissions
+    if (!hasText && !hasFiles) {
+      setSubmissionError(
+        language === "id"
+          ? "Anda harus memberikan teks tanggapan atau mengunggah setidaknya satu berkas sebelum menyerahkan tugas."
+          : "You must provide a written response or upload at least one file before submitting."
+      );
+      return;
+    }
+
     setIsSubmittingWork(true);
 
     try {
@@ -218,7 +236,8 @@ export function AssignmentDetailClient({
             assignment_id: assignment.id,
             student_id: profile.id,
             status: "Completed",
-            progress: 100,
+            progress: studentProgress > 0 ? studentProgress : 100,
+            submission_text: studentNote.trim() || null,
             submission_note: studentNote.trim() || null,
             submitted_at: now,
             updated_at: now,
@@ -244,14 +263,13 @@ export function AssignmentDetailClient({
 
       triggerCompletionConfetti();
       setSubmissionSuccess(true);
+      setSubmissionError(null);
       setTimeout(() => setSubmissionSuccess(false), 3000);
-
-      // Auto update master assignment progress to 100% only if teacher/owner
-      if (canGrade && assignment.status !== "Completed") {
-        await handleStatusChange("Completed");
-      }
-    } catch (err) {
+      router.refresh();
+    } catch (err: unknown) {
       console.error("Error submitting assignment:", err);
+      const msg = err instanceof Error ? err.message : "Failed to submit assignment";
+      setSubmissionError(msg);
     } finally {
       setIsSubmittingWork(false);
     }
@@ -1082,15 +1100,10 @@ export function AssignmentDetailClient({
 
             {/* Status & Graded pill */}
             <div className="flex items-center gap-2">
-              {mySubmission?.status === "Completed" ? (
+              {mySubmission?.submitted_at ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/60 border border-emerald-700/50 text-emerald-400">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>{t.statuses.completed}</span>
-                </span>
-              ) : mySubmission?.status === "In Progress" ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-950/60 border border-blue-700/50 text-blue-400">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{t.statuses.inProgress}</span>
+                  <span>{language === "id" ? "Sudah Diserahkan" : "Submitted"}</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-zinc-900 border border-zinc-700/60 text-zinc-400">
@@ -1232,26 +1245,46 @@ export function AssignmentDetailClient({
 
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                {t.assignments.detail.submissionNote}
+                {language === "id"
+                  ? "Teks Tanggapan / Lembar Jawaban Tertulis"
+                  : "Written Submission Deliverable / Response Notes"}
               </label>
               <textarea
                 value={studentNote}
-                onChange={(e) => setStudentNote(e.target.value)}
-                placeholder={t.assignments.detail.submissionPlaceholder}
+                onChange={(e) => {
+                  setStudentNote(e.target.value);
+                  if (submissionError) setSubmissionError(null);
+                }}
+                placeholder={
+                  language === "id"
+                    ? "Tuliskan jawaban, tautan kerjaan/dokumen, atau penjelasan deliverable Anda di sini..."
+                    : "Type your response, deliverable documentation, or submission notes here..."
+                }
                 rows={3}
                 className="w-full rounded-xl border border-[#222226] bg-[#070707] px-3.5 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors resize-none"
               />
             </div>
 
+            {submissionError && (
+              <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-xs text-red-300 flex items-start gap-2.5">
+                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <span>{submissionError}</span>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <p className="text-[11px] text-zinc-500">
-                {mySubmission?.status === "Completed"
-                  ? (language === "id" ? "Tugas telah diserahkan. Anda dapat memperbarui catatan kapan saja." : "Assignment submitted. You can update your submission notes anytime.")
-                  : (language === "id" ? "Klik serahkan tugas untuk mengirim ke dosen." : "Submit your coursework for instructor review and grading.")}
+                {mySubmission?.submitted_at
+                  ? (language === "id"
+                      ? "Tugas telah diserahkan resmi. Anda dapat memperbarui deliverable kapan saja."
+                      : "Assignment officially submitted. You can update your deliverables anytime.")
+                  : (language === "id"
+                      ? "Klik serahkan tugas untuk mengirim deliverable (teks atau berkas) ke pengajar."
+                      : "Submit your coursework deliverable (written response or attached file) for instructor review.")}
               </p>
 
               <div className="flex items-center gap-2 shrink-0">
-                {mySubmission?.status !== "Completed" && (
+                {!mySubmission?.submitted_at && (
                   <Button
                     type="button"
                     variant="outline"
@@ -1278,9 +1311,9 @@ export function AssignmentDetailClient({
                     <>
                       <Send className="h-3.5 w-3.5" />
                       <span>
-                        {mySubmission?.status === "Completed"
-                          ? t.assignments.detail.updateSubmissionBtn
-                          : t.assignments.detail.turnInBtn}
+                        {mySubmission?.submitted_at
+                          ? (language === "id" ? "Perbarui Serahan" : "Update Submission")
+                          : (language === "id" ? "Serahkan Tugas" : "Submit Assignment")}
                       </span>
                     </>
                   )}

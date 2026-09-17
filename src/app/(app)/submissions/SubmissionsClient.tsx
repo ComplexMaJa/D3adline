@@ -75,7 +75,7 @@ export function SubmissionsClient({
   // Derived metrics
   const totalSubmissions = submissions.length;
   const needsGrading = submissions.filter(
-    (s) => (s.status === "Completed" || s.submitted_at) && s.grade === null
+    (s) => Boolean(s.submitted_at) && s.grade === null
   ).length;
   const gradedCount = submissions.filter((s) => s.grade !== null).length;
   const averageGrade = React.useMemo(() => {
@@ -97,7 +97,7 @@ export function SubmissionsClient({
 
       // Status filter
       if (selectedStatus === "needs_grading") {
-        if (!((item.status === "Completed" || item.submitted_at) && item.grade === null)) {
+        if (!item.submitted_at || item.grade !== null) {
           return false;
         }
       } else if (selectedStatus === "graded") {
@@ -105,7 +105,7 @@ export function SubmissionsClient({
           return false;
         }
       } else if (selectedStatus === "in_progress") {
-        if (item.status !== "In Progress") {
+        if (Boolean(item.submitted_at)) {
           return false;
         }
       }
@@ -408,11 +408,11 @@ export function SubmissionsClient({
                         )}
                       </td>
 
-                      {/* Student Note */}
+                      {/* Student Note / Deliverable */}
                       <td className="py-3.5 px-4 max-w-xs">
-                        {sub.submission_note ? (
-                          <p className="text-xs text-zinc-400 italic line-clamp-2">
-                            &ldquo;{sub.submission_note}&rdquo;
+                        {sub.submission_text || sub.submission_note ? (
+                          <p className="text-xs text-zinc-300 italic line-clamp-2">
+                            &ldquo;{sub.submission_text || sub.submission_note}&rdquo;
                           </p>
                         ) : (
                           <span className="text-zinc-600 text-[11px]">
@@ -510,9 +510,9 @@ export function SubmissionsClient({
                     )}
                   </div>
 
-                  {sub.submission_note && (
-                    <div className="p-2 rounded-lg bg-[#121214] border border-[#202024] text-[11px] text-zinc-400 italic">
-                      &ldquo;{sub.submission_note}&rdquo;
+                  {(sub.submission_text || sub.submission_note) && (
+                    <div className="p-2 rounded-lg bg-[#121214] border border-[#202024] text-[11px] text-zinc-300 italic">
+                      &ldquo;{sub.submission_text || sub.submission_note}&rdquo;
                     </div>
                   )}
 
@@ -577,12 +577,14 @@ export function SubmissionsClient({
                 )}
               </div>
 
-              {selectedSubmission.submission_note && (
-                <div className="pt-2 border-t border-[#1C1C20] text-xs text-zinc-300 italic">
-                  <span className="text-zinc-500 not-italic text-[10px] block mb-0.5">
-                    {isId ? "Catatan Mahasiswa:" : "Student Note:"}
+              {(selectedSubmission.submission_text || selectedSubmission.submission_note) && (
+                <div className="pt-2 border-t border-[#1C1C20] text-xs text-zinc-300">
+                  <span className="text-zinc-500 not-italic text-[10px] block mb-0.5 font-medium">
+                    {isId ? "Deliverable / Catatan Serahan:" : "Deliverable / Submission Content:"}
                   </span>
-                  &ldquo;{selectedSubmission.submission_note}&rdquo;
+                  <div className="p-2 rounded-lg bg-[#0c0c0e] border border-[#202024] font-sans text-zinc-200 whitespace-pre-wrap">
+                    {selectedSubmission.submission_text || selectedSubmission.submission_note}
+                  </div>
                 </div>
               )}
             </div>

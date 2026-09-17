@@ -41,6 +41,27 @@ export async function adminSetUserRole(targetUserId: string, targetRole: UserRol
     }
   }
 
+  // Check target user's current role; if teacher is changing role, ensure no active classes are orphaned
+  const { data: targetProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", targetUserId)
+    .single();
+
+  if (targetProfile?.role === "teacher" && targetRole !== "teacher") {
+    const { count: activeCourseCount } = await supabase
+      .from("courses")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", targetUserId)
+      .eq("is_archived", false);
+
+    if (activeCourseCount && activeCourseCount > 0) {
+      throw new Error(
+        `Cannot change role: this teacher currently owns ${activeCourseCount} active class(es). Please reassign or archive their classes first.`
+      );
+    }
+  }
+
   // Call security definer RPC
   const { error } = await supabase.rpc("admin_set_user_role", {
     target_user_id: targetUserId,

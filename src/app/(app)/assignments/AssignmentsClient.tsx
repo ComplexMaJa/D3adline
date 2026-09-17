@@ -255,6 +255,14 @@ export function AssignmentsClient({
 
         if (error) throw error;
       } else if (profile?.id) {
+        // Checkbox is personal progress only; preserve existing official submitted_at
+        const { data: existingSub } = await supabase
+          .from("assignment_submissions")
+          .select("submitted_at")
+          .eq("assignment_id", assignment.id)
+          .eq("student_id", profile.id)
+          .maybeSingle();
+
         const { error } = await supabase
           .from("assignment_submissions")
           .upsert({
@@ -262,7 +270,8 @@ export function AssignmentsClient({
             student_id: profile.id,
             status: newStatus,
             progress: newProgress,
-            submitted_at: isNowCompleted ? new Date().toISOString() : null,
+            submitted_at: existingSub?.submitted_at ?? null,
+            updated_at: new Date().toISOString(),
           }, { onConflict: "assignment_id,student_id" });
 
         if (error) throw error;

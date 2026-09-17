@@ -196,6 +196,14 @@ export function CourseDetailClient({
         if (error) throw error;
       } else if (profile?.id) {
         const now = new Date().toISOString();
+        // Fetch existing submission to preserve submitted_at (checkbox is personal progress only, NOT official submission)
+        const { data: existingSub } = await supabase
+          .from("assignment_submissions")
+          .select("submitted_at")
+          .eq("assignment_id", assignment.id)
+          .eq("student_id", profile.id)
+          .maybeSingle();
+
         const { error } = await supabase
           .from("assignment_submissions")
           .upsert(
@@ -204,7 +212,7 @@ export function CourseDetailClient({
               student_id: profile.id,
               status: newStatus,
               progress: newProgress,
-              submitted_at: isNowCompleted ? now : null,
+              submitted_at: existingSub?.submitted_at ?? null,
               updated_at: now,
             },
             { onConflict: "assignment_id,student_id" }

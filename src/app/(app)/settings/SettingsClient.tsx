@@ -99,12 +99,17 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
     setSaveError(null);
 
     try {
+      // Teachers cannot change their display name; only students/admins can
+      const targetDisplayName = isTeacher
+        ? (profile.display_name || displayName)
+        : displayName.trim();
+
       const { error } = await supabase
         .from("profiles")
         .upsert({
           id: profile.id,
           email: profile.email,
-          display_name: displayName.trim(),
+          display_name: targetDisplayName,
           avatar_url: avatarUrl.trim() || null,
           role: effectiveRole,
           institution: institution.trim() || null,
@@ -117,7 +122,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
       // Also update auth user metadata for fallback resilience
       await supabase.auth.updateUser({
         data: {
-          display_name: displayName.trim(),
+          display_name: targetDisplayName,
           avatar_url: avatarUrl.trim() || null,
           role: effectiveRole,
           institution: institution.trim() || null,
@@ -127,7 +132,7 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
 
       setProfile((prev) => ({
         ...prev,
-        display_name: displayName.trim(),
+        display_name: targetDisplayName,
         avatar_url: avatarUrl.trim() || null,
         role: effectiveRole,
         institution: institution.trim() || null,
@@ -286,15 +291,35 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  {t.settings.displayName}
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    {t.settings.displayName}
+                  </label>
+                  {isTeacher && (
+                    <span className="text-[10px] text-amber-400/90 flex items-center gap-1 font-medium">
+                      <Lock className="h-3 w-3" />
+                      <span>{language === "id" ? "Dikelola Admin" : "Managed by Admin"}</span>
+                    </span>
+                  )}
+                </div>
                 <Input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={isTeacher}
                   placeholder={t.settings.displayNamePlaceholder}
                   leftIcon={<User className="h-4 w-4" />}
+                  className={cn(isTeacher && "opacity-70 cursor-not-allowed bg-zinc-900/50 border-zinc-800 text-zinc-300")}
                 />
+                {isTeacher && (
+                  <p className="mt-1.5 text-[11px] text-zinc-400 flex items-start gap-1.5 leading-relaxed">
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <span>
+                      {language === "id"
+                        ? "Nama pengajar Anda dikelola oleh administrator karena terkait dengan kelas yang Anda ajar."
+                        : "Your teacher name is managed by the administrator because it is associated with your classes."}
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div>

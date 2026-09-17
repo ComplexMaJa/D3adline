@@ -62,6 +62,7 @@ export interface AssignmentSubmission {
   status: AssignmentStatus;
   progress: number;
   submission_note: string | null;
+  submission_text?: string | null;
   submitted_at: string | null;
   grade: number | null;
   feedback: string | null;
