@@ -4,12 +4,13 @@ import * as React from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useApp } from "@/components/layout/AppShell";
 import { Course } from "@/types/database";
 import { BookOpen, Check, AlertCircle, KeyRound, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+import { joinCourseByCode } from "@/lib/actions";
 
 interface JoinCourseDialogProps {
   isOpen: boolean;
@@ -25,7 +26,6 @@ export function JoinCourseDialog({ isOpen, onClose, onJoined }: JoinCourseDialog
 
   const { refreshCourses } = useApp();
   const { language } = useLanguage();
-  const supabase = createClient();
   const router = useRouter();
 
   const isId = language === "id";
@@ -57,78 +57,17 @@ export function JoinCourseDialog({ isOpen, onClose, onJoined }: JoinCourseDialog
     setError(null);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const result = await joinCourseByCode(cleanCode);
 
-      if (!user) {
-        setError(isId ? "Sesi Anda telah berakhir. Silakan login kembali." : "Session expired. Please log in again.");
-        return;
+      if (result.course) {
+        setSuccessCourse(result.course);
+        if (onJoined) {
+          onJoined(result.course);
+        }
       }
 
-      // Find course by join_code (case-insensitive)
-      const { data: course, error: courseError } = await supabase
-        .from("courses")
-        .select("*")
-        .ilike("join_code", cleanCode)
-        .maybeSingle();
-
-      if (courseError) throw courseError;
-
-      if (!course) {
-        setError(
-          isId
-            ? `Kelas dengan kode "${cleanCode}" tidak ditemukan. Pastikan kode sudah benar dari pengajar Anda.`
-            : `No course found with code "${cleanCode}". Please verify the code with your instructor.`
-        );
-        return;
-      }
-
-      // Check if user is the course instructor
-      if (course.user_id === user.id) {
-        setError(
-          isId
-            ? "Anda adalah pembuat / pengajar kelas ini."
-            : "You are the instructor / creator of this class."
-        );
-        return;
-      }
-
-      // Check if student is already enrolled
-      const { data: existingEnrollment } = await supabase
-        .from("course_enrollments")
-        .select("id")
-        .eq("course_id", course.id)
-        .eq("student_id", user.id)
-        .maybeSingle();
-
-      if (existingEnrollment) {
-        setError(
-          isId
-            ? `Anda sudah terdaftar di kelas "${course.name}".`
-            : `You are already enrolled in "${course.name}".`
-        );
-        return;
-      }
-
-      // Enroll student into course
-      const { error: enrollError } = await supabase
-        .from("course_enrollments")
-        .insert({
-          course_id: course.id,
-          student_id: user.id,
-          status: "active",
-        });
-
-      if (enrollError) throw enrollError;
-
-      setSuccessCourse(course as Course);
       await refreshCourses();
       router.refresh();
-
-      if (onJoined) {
-        onJoined(course as Course);
-      }
 
       setTimeout(() => {
         onClose();

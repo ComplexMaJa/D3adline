@@ -21,6 +21,7 @@ interface AppShellProps {
 export const AppContext = React.createContext<{
   profile: Profile | null;
   userRole: UserRole;
+  isAdmin: boolean;
   isTeacher: boolean;
   isStudent: boolean;
   courses: Course[];
@@ -32,6 +33,7 @@ export const AppContext = React.createContext<{
 }>({
   profile: null,
   userRole: "student",
+  isAdmin: false,
   isTeacher: false,
   isStudent: true,
   courses: [],
@@ -187,8 +189,9 @@ export function AppShell({
   }, [courses]);
 
   const userRole: UserRole = profile?.role || "student";
-  const isTeacher = userRole === "teacher" || userRole === "admin";
-  const isStudent = !isTeacher;
+  const isAdmin = userRole === "admin";
+  const isTeacher = userRole === "teacher" || isAdmin;
+  const isStudent = userRole === "student";
 
   const openCreateAssignment = (courseId?: string) => {
     if (!isTeacher) return;
@@ -221,6 +224,7 @@ export function AppShell({
         value={{
           profile,
           userRole,
+          isAdmin,
           isTeacher,
           isStudent,
           courses,

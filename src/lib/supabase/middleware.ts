@@ -76,5 +76,30 @@ export async function updateSession(request: NextRequest) {
     return createRedirect(url);
   }
 
+  // Role-based route guard for /admin and /submissions
+  if (user && (pathname.startsWith('/admin') || pathname.startsWith('/submissions'))) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const role = profile?.role || 'student';
+
+    // /admin is restricted strictly to 'admin'
+    if (pathname.startsWith('/admin') && role !== 'admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return createRedirect(url);
+    }
+
+    // /submissions is restricted to 'teacher' or 'admin'
+    if (pathname.startsWith('/submissions') && role === 'student') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return createRedirect(url);
+    }
+  }
+
   return supabaseResponse;
 }
