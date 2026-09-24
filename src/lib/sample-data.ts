@@ -156,7 +156,8 @@ export async function seedSampleData() {
             student_id: students[0].id,
             status: "Completed" as const,
             progress: 100,
-            submission_note: "Implemented balanced rotations in C++ with memory benchmarks.",
+            submission_text: "Implemented balanced rotations in C++ with memory benchmarks and unit test suite.",
+            submission_note: "Implemented balanced rotations in C++ with memory benchmarks and unit test suite.",
             submitted_at: new Date().toISOString(),
             grade: 95.0,
             feedback: "Excellent benchmark methodology and clean rotation pointers!",
@@ -166,7 +167,9 @@ export async function seedSampleData() {
             student_id: students[Math.min(1, students.length - 1)].id,
             status: "In Progress" as const,
             progress: 60,
+            submission_text: null,
             submission_note: "Writing delete tests for double-black leaf nodes.",
+            submitted_at: null,
           },
         ];
 
@@ -183,7 +186,7 @@ export async function seedSampleData() {
   // =========================================================================
   // STUDENT SEEDING FLOW
   // =========================================================================
-  // Students should NOT create courses. Instead, enroll the student into existing
+  // Students must NEVER create courses. Instead, enroll the student into existing
   // active courses with assignments to complete!
   const { data: existingCourses } = await supabase
     .from("courses")
@@ -191,101 +194,45 @@ export async function seedSampleData() {
     .eq("is_archived", false)
     .limit(4);
 
-  if (existingCourses && existingCourses.length > 0) {
-    // Enroll the student into these courses
-    const newEnrollments = existingCourses.map((c) => ({
-      course_id: c.id,
+  if (!existingCourses || existingCourses.length === 0) {
+    throw new Error(
+      "No active courses available to enroll in. Please ask your instructor or administrator to create courses first."
+    );
+  }
+
+  // Enroll the student into these courses
+  const newEnrollments = existingCourses.map((c) => ({
+    course_id: c.id,
+    student_id: user.id,
+    status: "active" as const,
+  }));
+
+  await supabase.from("course_enrollments").upsert(newEnrollments, {
+    onConflict: "course_id,student_id",
+    ignoreDuplicates: true,
+  });
+
+  // Create initial submissions for the student so they have active progress
+  const allAssignments = existingCourses.flatMap((c) => (c.assignments as any[]) || []);
+  if (allAssignments.length > 0) {
+    const studentSubmissions = allAssignments.slice(0, 3).map((a, idx) => ({
+      assignment_id: a.id,
       student_id: user.id,
-      status: "active" as const,
+      status: idx === 0 ? ("In Progress" as const) : ("Not Started" as const),
+      progress: idx === 0 ? 40 : 0,
+      submission_text: null,
+      submission_note: idx === 0 ? "Started working on assignment requirements." : null,
+      submitted_at: null,
     }));
 
-    await supabase.from("course_enrollments").upsert(newEnrollments, {
-      onConflict: "course_id,student_id",
+    await supabase.from("assignment_submissions").upsert(studentSubmissions, {
+      onConflict: "assignment_id,student_id",
       ignoreDuplicates: true,
     });
-
-    // Create initial submissions for the student so they have active progress
-    const allAssignments = existingCourses.flatMap((c) => (c.assignments as any[]) || []);
-    if (allAssignments.length > 0) {
-      const studentSubmissions = allAssignments.slice(0, 3).map((a, idx) => ({
-        assignment_id: a.id,
-        student_id: user.id,
-        status: idx === 0 ? ("In Progress" as const) : ("Not Started" as const),
-        progress: idx === 0 ? 40 : 0,
-        submission_note: idx === 0 ? "Started working on requirements." : null,
-      }));
-
-      await supabase.from("assignment_submissions").upsert(studentSubmissions, {
-        onConflict: "assignment_id,student_id",
-        ignoreDuplicates: true,
-      });
-    }
-
-    return {
-      coursesCount: existingCourses.length,
-      assignmentsCount: allAssignments.length,
-    };
-  }
-
-  // Fallback for empty database: Teacher course created and student enrolled
-  const fallbackCourse = {
-    user_id: user.id,
-    name: "Software Engineering & Architecture",
-    code: "CS-201",
-    instructor: "Prof. System",
-    description: "Design patterns, agile development, and scalable cloud applications.",
-    color: "#8B5CF6",
-    join_code: generateJoinCode(),
-    is_archived: false,
-  };
-
-  const { data: createdCourses, error: courseError } = await supabase
-    .from("courses")
-    .insert([fallbackCourse])
-    .select();
-
-  if (courseError) {
-    throw new Error(courseError.message || "Failed to initialize sample course.");
-  }
-
-  const course = createdCourses[0];
-
-  const sampleAssignments = [
-    {
-      user_id: user.id,
-      course_id: course.id,
-      title: "Sprint 1 Architecture Design Document",
-      description: "Decompose monolithic services into RESTful domain models.",
-      priority: "High" as const,
-      status: "In Progress" as const,
-      progress: 50,
-      due_date: format(addDays(today, 3), "yyyy-MM-dd"),
-      due_time: "23:59:00",
-    },
-    {
-      user_id: user.id,
-      course_id: course.id,
-      title: "Unit Testing & Mocking Lab",
-      description: "Write integration tests with 85% code coverage.",
-      priority: "Medium" as const,
-      status: "Not Started" as const,
-      progress: 0,
-      due_date: format(addDays(today, 7), "yyyy-MM-dd"),
-      due_time: "23:59:00",
-    },
-  ];
-
-  const { data: createdAssignments, error: assignError } = await supabase
-    .from("assignments")
-    .insert(sampleAssignments)
-    .select();
-
-  if (assignError) {
-    throw new Error(assignError.message || "Failed to create sample assignments.");
   }
 
   return {
-    coursesCount: createdCourses.length,
-    assignmentsCount: createdAssignments ? createdAssignments.length : 0,
+    coursesCount: existingCourses.length,
+    assignmentsCount: allAssignments.length,
   };
 }

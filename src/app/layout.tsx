@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,13 +8,21 @@ const inter = Inter({
   display: "swap",
 });
 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Deadline — Student Assignment & Deadline Manager",
   description: "Stay ahead of your academic workload, track assignments, and conquer deadlines with a sleek AMOLED command center.",
   keywords: ["student deadline tracker", "assignment manager", "university workload", "homework planner", "course organizer"],
   authors: [{ name: "Deadline" }],
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
@@ -32,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans bg-black text-[#F5F5F5] min-h-screen antialiased selection:bg-purple-600/30 selection:text-purple-200`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-black text-[#F5F5F5] min-h-screen antialiased selection:bg-purple-600/30 selection:text-purple-200`}>
         {children}
       </body>
     </html>

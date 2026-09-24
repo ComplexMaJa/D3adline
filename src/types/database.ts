@@ -62,6 +62,7 @@ export interface AssignmentSubmission {
   status: AssignmentStatus;
   progress: number;
   submission_note: string | null;
+  submission_text?: string | null;
   submitted_at: string | null;
   grade: number | null;
   feedback: string | null;
@@ -90,6 +91,7 @@ export interface Assignment {
   subtasks?: Subtask[];
   attachments?: Attachment[];
   submissions?: AssignmentSubmission[];
+  has_submitted?: boolean;
 }
 
 export interface Subtask {
@@ -201,9 +203,56 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: string;
       };
+      enroll_course_by_join_code: {
+        Args: {
+          p_join_code: string;
+        };
+        Returns: Json;
+      };
+      admin_set_user_role: {
+        Args: {
+          target_user_id: string;
+          target_role: UserRole;
+        };
+        Returns: void;
+      };
+      regenerate_course_join_code: {
+        Args: {
+          p_course_id: string;
+        };
+        Returns: string;
+      };
+      toggle_course_archived: {
+        Args: {
+          p_course_id: string;
+          p_is_archived: boolean;
+        };
+        Returns: void;
+      };
+      remove_student_from_course: {
+        Args: {
+          p_course_id: string;
+          p_student_id: string;
+        };
+        Returns: void;
+      };
     };
     Enums: {
       user_role: UserRole;
     };
   };
 };
+
+export interface AdminStats {
+  totalUsers: number;
+  totalStudents: number;
+  totalTeachers: number;
+  totalAdmins: number;
+  totalCourses: number;
+  activeCourses: number;
+  archivedCourses: number;
+  totalAssignments: number;
+  totalSubmissions: number;
+  pendingSubmissions: number;
+  gradedSubmissions: number;
+}

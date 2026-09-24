@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -19,6 +20,9 @@ import {
   GraduationCap,
   School,
   KeyRound,
+  Shield,
+  Users,
+  Award,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/types/database";
@@ -37,7 +41,7 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
   const [showCreateMenu, setShowCreateMenu] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const supabase = createClient();
-  const { profile: appProfile, courses, overdueCount, openCreateCourse, openJoinCourse, isTeacher } = useApp();
+  const { profile: appProfile, courses, overdueCount, openCreateCourse, openJoinCourse, isTeacher, isAdmin, userRole } = useApp();
   const { language, t } = useLanguage();
 
   const effectiveProfile = appProfile || propProfile;
@@ -72,38 +76,116 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
     }
   };
 
-  const navItems = [
-    {
-      title: t.nav.dashboard,
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: t.nav.assignments,
-      href: "/assignments",
-      icon: CheckSquare,
-      badge: totalAssignmentsCount > 0 ? totalAssignmentsCount : undefined,
-    },
-    {
-      title: t.nav.courses,
-      href: "/courses",
-      icon: BookOpen,
-      badge: totalCoursesCount > 0 ? totalCoursesCount : undefined,
-    },
-    {
-      title: t.nav.calendar,
-      href: "/calendar",
-      icon: CalendarIcon,
-    },
-    {
-      title: t.nav.settings,
-      href: "/settings",
-      icon: SettingsIcon,
-    },
-  ];
+  // 3-Role Nav Items Mapping
+  const navItems = React.useMemo(() => {
+    if (isAdmin) {
+      return [
+        {
+          title: t.nav.dashboard,
+          href: "/admin",
+          icon: LayoutDashboard,
+        },
+        {
+          title: language === "id" ? "Pengguna" : "Users",
+          href: "/admin/users",
+          icon: Users,
+        },
+        {
+          title: language === "id" ? "Semua Kelas" : "Classes",
+          href: "/admin/courses",
+          icon: BookOpen,
+          badge: totalCoursesCount > 0 ? totalCoursesCount : undefined,
+        },
+        {
+          title: language === "id" ? "Tugas Platform" : "Assignments",
+          href: "/admin/assignments",
+          icon: CheckSquare,
+          badge: totalAssignmentsCount > 0 ? totalAssignmentsCount : undefined,
+        },
+        {
+          title: language === "id" ? "Semua Pengumpulan" : "Submissions",
+          href: "/admin/submissions",
+          icon: Award,
+        },
+        {
+          title: t.nav.settings,
+          href: "/settings",
+          icon: SettingsIcon,
+        },
+      ];
+    }
+
+    if (isTeacher) {
+      return [
+        {
+          title: t.nav.dashboard,
+          href: "/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          title: language === "id" ? "Kelas Saya" : "My Classes",
+          href: "/courses",
+          icon: BookOpen,
+          badge: totalCoursesCount > 0 ? totalCoursesCount : undefined,
+        },
+        {
+          title: t.nav.assignments,
+          href: "/assignments",
+          icon: CheckSquare,
+          badge: totalAssignmentsCount > 0 ? totalAssignmentsCount : undefined,
+        },
+        {
+          title: language === "id" ? "Pengumpulan & Nilai" : "Submissions",
+          href: "/submissions",
+          icon: Award,
+        },
+        {
+          title: t.nav.calendar,
+          href: "/calendar",
+          icon: CalendarIcon,
+        },
+        {
+          title: t.nav.settings,
+          href: "/settings",
+          icon: SettingsIcon,
+        },
+      ];
+    }
+
+    // Student
+    return [
+      {
+        title: t.nav.dashboard,
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: language === "id" ? "Kelas Saya" : "My Classes",
+        href: "/courses",
+        icon: BookOpen,
+        badge: totalCoursesCount > 0 ? totalCoursesCount : undefined,
+      },
+      {
+        title: t.nav.assignments,
+        href: "/assignments",
+        icon: CheckSquare,
+        badge: totalAssignmentsCount > 0 ? totalAssignmentsCount : undefined,
+      },
+      {
+        title: t.nav.calendar,
+        href: "/calendar",
+        icon: CalendarIcon,
+      },
+      {
+        title: t.nav.settings,
+        href: "/settings",
+        icon: SettingsIcon,
+      },
+    ];
+  }, [isAdmin, isTeacher, language, t, totalAssignmentsCount, totalCoursesCount]);
 
   const displayName =
-    effectiveProfile?.display_name || (isTeacher ? "Instructor" : "Student");
+    effectiveProfile?.display_name || (isAdmin ? "Admin" : isTeacher ? "Instructor" : "Student");
   const userInitial = displayName.charAt(0).toUpperCase();
 
   return (
@@ -114,29 +196,37 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
         <div className="px-1 py-0.5">
           <div className="flex items-center justify-between gap-2">
             <Link
-              href="/dashboard"
+              href={isAdmin ? "/admin" : "/dashboard"}
               className="flex items-center gap-2.5 group min-w-0"
             >
-              <div
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-200 shrink-0",
-                  isTeacher
-                    ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                    : "bg-purple-950/60 border-purple-500/40 text-purple-300 shadow-purple-glow-sm group-hover:border-purple-400 group-hover:shadow-purple-glow"
-                )}
-              >
-                {isTeacher ? (
+              {isAdmin ? (
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border bg-amber-950/60 border-amber-500/40 text-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.25)] group-hover:border-amber-400 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)] shrink-0 transition-all duration-200">
+                  <Shield className="h-4 w-4 text-amber-300" />
+                </div>
+              ) : isTeacher ? (
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.35)] shrink-0 transition-all duration-200">
                   <School className="h-4 w-4 text-emerald-300" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-purple-300" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="relative h-9 w-9 rounded-xl overflow-hidden shadow-purple-glow-sm group-hover:shadow-purple-glow group-hover:scale-105 transition-all duration-200 shrink-0">
+                  <Image
+                    src="/logo.png"
+                    alt="Deadline Logo"
+                    width={36}
+                    height={36}
+                    priority
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              )}
               <div className="min-w-0">
                 <span className="text-base font-bold tracking-tight text-white block leading-tight">
                   Deadline
                 </span>
                 <span className="text-[11px] text-zinc-400 font-normal block leading-tight truncate">
-                  {isTeacher
+                  {isAdmin
+                    ? (language === "id" ? "Panel Administrator" : "Admin Panel")
+                    : isTeacher
                     ? (language === "id" ? "Konsol Pengajar" : "Instructor Console")
                     : (language === "id" ? "Portal Mahasiswa" : "Assignment Hub")}
                 </span>
@@ -147,7 +237,9 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
             <div
               className={cn(
                 "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap",
-                isTeacher
+                isAdmin
+                  ? "bg-amber-950/90 text-amber-300 border-amber-700/60 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                  : isTeacher
                   ? "bg-emerald-950/90 text-emerald-300 border-emerald-700/60 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
                   : "bg-purple-950/90 text-purple-300 border-purple-700/60 shadow-purple-glow-sm"
               )}
@@ -155,16 +247,24 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
               <span
                 className={cn(
                   "h-1.5 w-1.5 rounded-full animate-pulse shrink-0",
-                  isTeacher ? "bg-emerald-400" : "bg-purple-400"
+                  isAdmin ? "bg-amber-400" : isTeacher ? "bg-emerald-400" : "bg-purple-400"
                 )}
               />
-              <span>{isTeacher ? t.auth.roleBadgeTeacher : t.auth.roleBadgeStudent}</span>
+              <span>{isAdmin ? t.auth.roleBadgeAdmin : isTeacher ? t.auth.roleBadgeTeacher : t.auth.roleBadgeStudent}</span>
             </div>
           </div>
         </div>
 
-        {/* Action Button: Teacher (Instructor Actions) vs Student (Join Class) */}
-        {!isTeacher ? (
+        {/* Action Button: Admin vs Teacher vs Student */}
+        {isAdmin ? (
+          <Link
+            href="/admin/users"
+            className="w-full flex items-center justify-center gap-2 rounded-xl text-white font-semibold text-xs py-2.5 px-3.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all duration-200 active:scale-[0.98]"
+          >
+            <Shield className="h-4 w-4 text-amber-200" />
+            <span>{language === "id" ? "Kelola Pengguna" : "Manage Users"}</span>
+          </Link>
+        ) : !isTeacher ? (
           <button
             onClick={openJoinCourse}
             className="w-full flex items-center justify-center gap-2 rounded-xl text-white font-semibold text-xs py-2.5 px-3.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 shadow-purple-glow-sm hover:shadow-purple-glow transition-all duration-200 active:scale-[0.98]"
@@ -216,7 +316,6 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
             )}
           </div>
         )}
-
 
         {/* Navigation Items */}
         <nav className="space-y-1">
@@ -310,7 +409,9 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
         <div
           className={cn(
             "rounded-xl border p-2.5 transition-all bg-[#090909]",
-            isTeacher
+            isAdmin
+              ? "border-amber-950/80 hover:border-amber-800/60"
+              : isTeacher
               ? "border-emerald-950/80 hover:border-emerald-800/60"
               : "border-purple-950/80 hover:border-purple-800/60"
           )}
@@ -324,7 +425,9 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
               <div
                 className={cn(
                   "relative h-9 w-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden text-xs font-bold border transition-all",
-                  isTeacher
+                  isAdmin
+                    ? "bg-amber-950/90 border-amber-600/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)] group-hover:border-amber-400"
+                    : isTeacher
                     ? "bg-emerald-950/90 border-emerald-600/50 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] group-hover:border-emerald-400"
                     : "bg-purple-950/90 border-purple-600/50 text-purple-300 shadow-purple-glow-sm group-hover:border-purple-400"
                 )}
@@ -343,7 +446,7 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
                 <span
                   className={cn(
                     "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-black",
-                    isTeacher ? "bg-emerald-400" : "bg-purple-400"
+                    isAdmin ? "bg-amber-400" : isTeacher ? "bg-emerald-400" : "bg-purple-400"
                   )}
                 />
               </div>
@@ -357,17 +460,21 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
                   <span
                     className={cn(
                       "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider inline-flex items-center gap-1 border shrink-0 whitespace-nowrap",
-                      isTeacher
+                      isAdmin
+                        ? "bg-amber-950/90 text-amber-300 border-amber-800/60"
+                        : isTeacher
                         ? "bg-emerald-950/90 text-emerald-300 border-emerald-800/60"
                         : "bg-purple-950/90 text-purple-300 border-purple-800/60"
                     )}
                   >
-                    {isTeacher ? (
+                    {isAdmin ? (
+                      <Shield className="h-2.5 w-2.5" />
+                    ) : isTeacher ? (
                       <School className="h-2.5 w-2.5" />
                     ) : (
                       <GraduationCap className="h-2.5 w-2.5" />
                     )}
-                    <span>{isTeacher ? t.auth.roleBadgeTeacher : t.auth.roleBadgeStudent}</span>
+                    <span>{isAdmin ? t.auth.roleBadgeAdmin : isTeacher ? t.auth.roleBadgeTeacher : t.auth.roleBadgeStudent}</span>
                   </span>
                   {effectiveProfile?.institution && (
                     <span

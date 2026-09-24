@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -98,8 +99,15 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-6 relative z-10 animate-fade-in">
         {/* Brand */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600/20 border border-purple-500/40 text-purple-400 shadow-purple-glow mb-1">
-            <Sparkles className="h-6 w-6" />
+          <div className="relative h-14 w-14 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(168,85,247,0.4)] mb-2">
+            <Image
+              src="/logo.png"
+              alt="Deadline Logo"
+              width={56}
+              height={56}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Create Your Account

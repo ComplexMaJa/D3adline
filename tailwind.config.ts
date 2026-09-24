@@ -62,12 +62,19 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-inter)", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",
         "slide-up": "slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
         "scale-in": "scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         "pulse-subtle": "pulseSubtle 3s infinite",
+        "marquee": "marquee 40s linear infinite",
+        "marquee-reverse": "marquee 40s linear infinite reverse",
+        "slide-up-word": "slideUpWord 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "glow-pulse": "glowPulse 4s ease-in-out infinite",
+        "float": "float 6s ease-in-out infinite",
+        "cell-pulse": "cellPulse 3s ease-in-out infinite",
       },
       keyframes: {
         fadeIn: {
@@ -85,6 +92,26 @@ const config: Config = {
         pulseSubtle: {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.85" },
+        },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        slideUpWord: {
+          "0%": { opacity: "0", transform: "translateY(24px) rotateX(-40deg)" },
+          "100%": { opacity: "1", transform: "translateY(0) rotateX(0deg)" },
+        },
+        glowPulse: {
+          "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
+          "50%": { opacity: "0.7", transform: "scale(1.05)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-12px)" },
+        },
+        cellPulse: {
+          "0%, 100%": { opacity: "0.6", boxShadow: "0 0 0 0 rgba(139, 92, 246, 0)" },
+          "50%": { opacity: "1", boxShadow: "0 0 12px 2px rgba(139, 92, 246, 0.2)" },
         },
       },
     },

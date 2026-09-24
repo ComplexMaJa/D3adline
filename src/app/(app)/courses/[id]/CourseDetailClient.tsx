@@ -32,7 +32,16 @@ import {
   Building2,
   GraduationCap,
   UserPlus,
+  UserMinus,
+  Archive,
+  RefreshCw,
 } from "lucide-react";
+import {
+  regenerateJoinCodeAction,
+  toggleCourseArchivedAction,
+  removeStudentFromCourseAction,
+  deleteCourseAction,
+} from "@/lib/actions";
 
 interface CourseDetailClientProps {
   course: Course;
@@ -54,6 +63,7 @@ export function CourseDetailClient({
   stats,
 }: CourseDetailClientProps) {
   const { t, language } = useLanguage();
+  const [currentCourse, setCurrentCourse] = React.useState<Course>(course);
   const [assignments, setAssignments] = React.useState<Assignment[]>(initialAssignments);
   const [enrollments, setEnrollments] = React.useState<CourseEnrollment[]>(initialEnrollments);
   const [copiedCode, setCopiedCode] = React.useState(false);
@@ -63,6 +73,12 @@ export function CourseDetailClient({
   const [isAssignStudentOpen, setIsAssignStudentOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // Archive and Regenerate join code state
+  const [isArchiving, setIsArchiving] = React.useState(false);
+  const [isRegeneratingCode, setIsRegeneratingCode] = React.useState(false);
+  const [studentToRemove, setStudentToRemove] = React.useState<{ id: string; name: string } | null>(null);
+  const [isRemovingStudent, setIsRemovingStudent] = React.useState(false);
 
   // Assignment edit and delete states
   const [assignmentToEdit, setAssignmentToEdit] = React.useState<Assignment | null>(null);
@@ -74,14 +90,63 @@ export function CourseDetailClient({
   const supabase = createClient();
   const router = useRouter();
 
-  const isInstructor = isTeacher && (profile?.id === course.user_id || profile?.role === "admin");
+  const isInstructor = (profile?.role === "admin") || (isTeacher && profile?.id === currentCourse.user_id);
   const isEnrolled = enrollments.some((e) => e.student_id === profile?.id);
 
   const handleCopyInviteCode = () => {
-    if (course.join_code) {
-      navigator.clipboard.writeText(course.join_code);
+    if (currentCourse.join_code) {
+      navigator.clipboard.writeText(currentCourse.join_code);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
+
+  const handleRegenerateJoinCode = async () => {
+    if (isRegeneratingCode) return;
+    setIsRegeneratingCode(true);
+    try {
+      const res = await regenerateJoinCodeAction(currentCourse.id);
+      if (res.newCode) {
+        setCurrentCourse((prev) => ({ ...prev, join_code: res.newCode }));
+      }
+      await refreshCourses();
+      router.refresh();
+    } catch (err) {
+      console.error("Error regenerating join code:", err);
+    } finally {
+      setIsRegeneratingCode(false);
+    }
+  };
+
+  const handleToggleArchived = async () => {
+    if (isArchiving) return;
+    setIsArchiving(true);
+    try {
+      const targetArchived = !currentCourse.is_archived;
+      await toggleCourseArchivedAction(currentCourse.id, targetArchived);
+      setCurrentCourse((prev) => ({ ...prev, is_archived: targetArchived }));
+      await refreshCourses();
+      router.refresh();
+    } catch (err) {
+      console.error("Error toggling archived status:", err);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleConfirmRemoveStudent = async () => {
+    if (!studentToRemove) return;
+    setIsRemovingStudent(true);
+    try {
+      await removeStudentFromCourseAction(currentCourse.id, studentToRemove.id);
+      setEnrollments((prev) => prev.filter((e) => e.student_id !== studentToRemove.id));
+      setStudentToRemove(null);
+      await refreshCourses();
+      router.refresh();
+    } catch (err) {
+      console.error("Error removing student:", err);
+    } finally {
+      setIsRemovingStudent(false);
     }
   };
 
@@ -105,6 +170,21 @@ export function CourseDetailClient({
   };
 
   const handleToggleComplete = async (assignment: Assignment) => {
+    const isStudentUser = !isInstructor && profile?.role !== "admin";
+    const mySub = assignment.submissions?.find((s) => s.student_id === profile?.id);
+    const hasMyAttachment = assignment.attachments?.some((att) => att.user_id === profile?.id);
+    const hasSubmitted = Boolean(
+      assignment.has_submitted ||
+      mySub?.submitted_at ||
+      (mySub?.submission_text && mySub.submission_text.trim().length > 0) ||
+      (mySub?.submission_note && mySub.submission_note.trim().length > 0) ||
+      hasMyAttachment
+    );
+
+    if (isStudentUser && !hasSubmitted && assignment.status !== "Completed") {
+      return;
+    }
+
     const isNowCompleted = assignment.status !== "Completed";
     const newStatus = isNowCompleted ? "Completed" : "In Progress";
     const newProgress = isNowCompleted ? 100 : 50;
@@ -131,6 +211,14 @@ export function CourseDetailClient({
         if (error) throw error;
       } else if (profile?.id) {
         const now = new Date().toISOString();
+        // Fetch existing submission to preserve submitted_at (checkbox is personal progress only, NOT official submission)
+        const { data: existingSub } = await supabase
+          .from("assignment_submissions")
+          .select("submitted_at")
+          .eq("assignment_id", assignment.id)
+          .eq("student_id", profile.id)
+          .maybeSingle();
+
         const { error } = await supabase
           .from("assignment_submissions")
           .upsert(
@@ -139,7 +227,7 @@ export function CourseDetailClient({
               student_id: profile.id,
               status: newStatus,
               progress: newProgress,
-              submitted_at: isNowCompleted ? now : null,
+              submitted_at: existingSub?.submitted_at ?? null,
               updated_at: now,
             },
             { onConflict: "assignment_id,student_id" }
@@ -159,12 +247,7 @@ export function CourseDetailClient({
   const handleDeleteCourse = async () => {
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from("courses")
-        .delete()
-        .eq("id", course.id);
-
-      if (error) throw error;
+      await deleteCourseAction(currentCourse.id);
       await refreshCourses();
       router.push("/courses");
     } catch (err) {
@@ -221,51 +304,56 @@ export function CourseDetailClient({
         {/* Accent strip */}
         <div
           className="absolute top-0 left-0 right-0 h-1.5"
-          style={{ backgroundColor: course.color || "#8B5CF6" }}
+          style={{ backgroundColor: currentCourse.color || "#8B5CF6" }}
         />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              {course.code && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {currentCourse.code && (
                 <span
                   className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold tracking-wide"
                   style={{
-                    backgroundColor: `${course.color}25`,
-                    color: course.color || "#8B5CF6",
-                    border: `1px solid ${course.color}50`,
+                    backgroundColor: `${currentCourse.color}25`,
+                    color: currentCourse.color || "#8B5CF6",
+                    border: `1px solid ${currentCourse.color}50`,
                   }}
                 >
-                  {course.code}
+                  {currentCourse.code}
+                </span>
+              )}
+              {currentCourse.is_archived && (
+                <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold tracking-wide bg-amber-950/50 border border-amber-800/60 text-amber-300">
+                  {language === "id" ? "Diarsipkan" : "Archived"}
                 </span>
               )}
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                {course.name}
+                {currentCourse.name}
               </h1>
             </div>
 
-            {course.instructor && (
+            {currentCourse.instructor && (
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <User className="h-3.5 w-3.5 text-zinc-500" />
-                <span>{t.courses.instructorLabel}: {course.instructor}</span>
+                <span>{t.courses.instructorLabel}: {currentCourse.instructor}</span>
               </div>
             )}
 
-            {course.description && (
+            {currentCourse.description && (
               <p className="text-xs text-zinc-400 max-w-2xl leading-relaxed">
-                {course.description}
+                {currentCourse.description}
               </p>
             )}
 
             {/* Course Join Code Banner */}
-            {course.join_code && (
+            {currentCourse.join_code && (
               <div className="mt-3 flex flex-wrap items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-black/70 border border-[#1E1E22]">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-medium text-zinc-400">
                     {t.courses.inviteCode}:
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-purple-950/40 border border-purple-800/50 text-purple-300 font-mono text-xs font-bold tracking-wider">
-                    {course.join_code}
+                    {currentCourse.join_code}
                   </span>
                 </div>
                 <Button
@@ -286,6 +374,19 @@ export function CourseDetailClient({
                     </>
                   )}
                 </Button>
+                {isInstructor && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRegenerateJoinCode}
+                    disabled={isRegeneratingCode}
+                    className="h-7 text-xs gap-1.5 border-[#2A2A2E] hover:border-purple-500/40"
+                    title={language === "id" ? "Buat ulang kode gabung baru" : "Regenerate new join code"}
+                  >
+                    <RefreshCw className={`h-3 w-3 text-zinc-400 ${isRegeneratingCode ? "animate-spin" : ""}`} />
+                    <span>{language === "id" ? "Kode Baru" : "Regenerate"}</span>
+                  </Button>
+                )}
                 <span className="text-[11px] text-zinc-500 hidden sm:inline">
                   {t.courses.shareCodeDesc}
                 </span>
@@ -301,7 +402,22 @@ export function CourseDetailClient({
 
           {/* Action buttons (only for course instructor / teacher) */}
           {isInstructor && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleArchived}
+                disabled={isArchiving}
+                className={currentCourse.is_archived ? "text-amber-400 border-amber-800/40" : ""}
+                title={currentCourse.is_archived ? "Unarchive this course" : "Archive this course"}
+              >
+                <Archive className="h-3.5 w-3.5" />
+                <span>
+                  {currentCourse.is_archived
+                    ? (language === "id" ? "Buka Arsip" : "Unarchive")
+                    : (language === "id" ? "Arsipkan" : "Archive")}
+                </span>
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -449,9 +565,21 @@ export function CourseDetailClient({
                         <p className="text-xs font-semibold text-zinc-200 truncate">
                           {studentName}
                         </p>
-                        <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-emerald-400">
-                          {enr.status}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-emerald-400">
+                            {enr.status}
+                          </span>
+                          {isInstructor && student?.id && (
+                            <button
+                              type="button"
+                              onClick={() => setStudentToRemove({ id: student.id, name: studentName })}
+                              className="p-1 rounded-md text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
+                              title={language === "id" ? `Keluarkan ${studentName}` : `Remove ${studentName}`}
+                            >
+                              <UserMinus className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {student?.institution && (
@@ -601,6 +729,22 @@ export function CourseDetailClient({
         }
         confirmText={t.common.delete}
         isLoading={isDeletingAssignment}
+      />
+
+      {/* Remove Student Confirm */}
+      <ConfirmDialog
+        isOpen={!!studentToRemove}
+        onClose={() => setStudentToRemove(null)}
+        onConfirm={handleConfirmRemoveStudent}
+        title={language === "id" ? `Keluarkan Mahasiswa?` : `Remove Student?`}
+        description={
+          language === "id"
+            ? `Apakah Anda yakin ingin mengeluarkan ${studentToRemove?.name} dari kelas "${currentCourse.name}"? Mahasiswa tidak akan dapat mengakses tugas kelas ini lagi.`
+            : `Are you sure you want to remove ${studentToRemove?.name} from "${currentCourse.name}"? They will lose access to assignments in this course.`
+        }
+        confirmText={language === "id" ? "Keluarkan" : "Remove"}
+        variant="danger"
+        isLoading={isRemovingStudent}
       />
     </div>
   );

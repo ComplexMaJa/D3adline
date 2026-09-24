@@ -39,7 +39,9 @@ export default async function CourseDetailPage({
     .from("assignments")
     .select(`
       *,
-      course:courses(*)
+      course:courses(*),
+      submissions:assignment_submissions(*),
+      attachments:assignment_attachments(*)
     `)
     .eq("course_id", id)
     .order("due_date", { ascending: true });
@@ -73,23 +75,38 @@ export default async function CourseDetailPage({
   }
 
   const assignments: Assignment[] = rawAssignments.map((a) => {
+    const sub = isStudent
+      ? (submissionByAssignment.get(a.id) || a.submissions?.find((s: any) => s.student_id === user?.id))
+      : null;
+    const hasMyAttachment = Boolean(user && a.attachments?.some((att: any) => att.user_id === user.id));
+    const hasSubmitted = Boolean(
+      sub?.submitted_at ||
+      (sub?.submission_text && sub.submission_text.trim().length > 0) ||
+      (sub?.submission_note && sub.submission_note.trim().length > 0) ||
+      hasMyAttachment
+    );
+
     if (isStudent) {
-      const sub = submissionByAssignment.get(a.id);
       if (sub) {
         return {
           ...a,
           status: sub.status,
           progress: sub.progress,
+          has_submitted: hasSubmitted,
         };
       } else {
         return {
           ...a,
           status: "Not Started" as const,
           progress: 0,
+          has_submitted: false,
         };
       }
     }
-    return a;
+    return {
+      ...a,
+      has_submitted: hasSubmitted,
+    };
   });
 
   // Calculate course metrics

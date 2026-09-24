@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useApp } from "@/components/layout/AppShell";
+import { SubmissionRequiredModal } from "@/components/assignments/SubmissionRequiredModal";
 
 interface AssignmentCardProps {
   assignment: Assignment;
@@ -45,6 +47,26 @@ export function AssignmentCard({
   const { t, language } = useLanguage();
 
   const courseData = assignment.course || course;
+  const { profile, isTeacher, isAdmin } = useApp();
+  const isStudent = !isTeacher && !isAdmin;
+  const [showSubmissionRequired, setShowSubmissionRequired] = React.useState(false);
+
+  const mySubmission = React.useMemo(() => {
+    return assignment.submissions?.find((s) => s.student_id === profile?.id);
+  }, [assignment.submissions, profile?.id]);
+
+  const hasMyAttachment = React.useMemo(() => {
+    return Boolean(assignment.attachments?.some((att) => att.user_id === profile?.id));
+  }, [assignment.attachments, profile?.id]);
+
+  const hasSubmitted = Boolean(
+    assignment.has_submitted ||
+    mySubmission?.submitted_at ||
+    (mySubmission?.submission_text && mySubmission.submission_text.trim().length > 0) ||
+    (mySubmission?.submission_note && mySubmission.submission_note.trim().length > 0) ||
+    hasMyAttachment
+  );
+
   const deadlineInfo = getDeadlineInfo(
     assignment.due_date,
     assignment.due_time,
@@ -69,6 +91,15 @@ export function AssignmentCard({
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Students cannot toggle an assignment complete from the card without submitting deliverables
+    if (isStudent) {
+      if (!isCompleted) {
+        setShowSubmissionRequired(true);
+      }
+      return;
+    }
+
     if (!isCompleted) {
       triggerCompletionConfetti();
     }
@@ -163,13 +194,31 @@ export function AssignmentCard({
         <div className="flex items-start gap-2.5 mb-2">
           <button
             onClick={handleToggle}
-            className="mt-0.5 text-zinc-500 hover:text-purple-400 transition-colors shrink-0"
-            title={isCompleted ? "Mark incomplete" : "Mark complete"}
+            className={cn(
+              "mt-0.5 transition-colors shrink-0",
+              isStudent && !isCompleted
+                ? "text-zinc-600 hover:text-amber-400 cursor-pointer"
+                : "text-zinc-500 hover:text-purple-400"
+            )}
+            title={
+              isStudent && !isCompleted
+                ? (language === "id"
+                    ? "Kumpulkan tugas Anda terlebih dahulu untuk menandainya selesai"
+                    : "Submit your coursework first before marking as complete")
+                : (isCompleted
+                    ? (language === "id" ? "Tandai belum selesai" : "Mark incomplete")
+                    : (language === "id" ? "Tandai selesai" : "Mark complete"))
+            }
           >
             {isCompleted ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-400 fill-emerald-950" />
             ) : (
-              <Circle className="h-4 w-4 hover:stroke-purple-400" />
+              <Circle
+                className={cn(
+                  "h-4 w-4",
+                  isStudent ? "hover:stroke-amber-400" : "hover:stroke-purple-400"
+                )}
+              />
             )}
           </button>
 
@@ -257,6 +306,13 @@ export function AssignmentCard({
           />
         </div>
       </div>
+
+      {/* Submission Required Notice Modal for students */}
+      <SubmissionRequiredModal
+        isOpen={showSubmissionRequired}
+        onClose={() => setShowSubmissionRequired(false)}
+        assignment={assignment}
+      />
     </div>
   );
 }
