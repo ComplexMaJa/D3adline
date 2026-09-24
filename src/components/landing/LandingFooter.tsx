@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Sparkles } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { landingTranslations } from "@/lib/i18n/translations/landing";
@@ -24,11 +25,17 @@ export function LandingFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Col 1: Brand & Tagline */}
           <div className="space-y-4 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 group cursor-hover">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600/15 border border-purple-500/25 text-purple-400">
-                <Sparkles className="h-3.5 w-3.5" />
+            <Link href="/" className="flex items-center gap-2.5 group cursor-hover">
+              <div className="relative h-7 w-7 rounded-lg overflow-hidden shadow-sm shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Deadline Logo"
+                  width={28}
+                  height={28}
+                  className="h-full w-full object-contain"
+                />
               </div>
-              <span className="text-sm font-display font-bold tracking-tight text-white">
+              <span className="text-sm font-display font-bold tracking-tight text-white group-hover:text-purple-200 transition-colors">
                 Deadline
               </span>
             </Link>

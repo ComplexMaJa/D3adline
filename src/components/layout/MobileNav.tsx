@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -135,24 +136,26 @@ export function MobileNav({ onOpenCreateAssignment }: MobileNavProps) {
       {/* Mobile Top Header */}
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-[#1A1A1A] bg-[#050505]/95 px-4 py-2.5 backdrop-blur-md">
         <Link href={isAdmin ? "/admin" : "/dashboard"} className="flex items-center gap-2">
-          <div
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-lg border",
-              isAdmin
-                ? "bg-amber-950/60 border-amber-500/40 text-amber-300"
-                : isTeacher
-                ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300"
-                : "bg-purple-600/20 border-purple-500/40 text-purple-400"
-            )}
-          >
-            {isAdmin ? (
+          {isAdmin ? (
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border bg-amber-950/60 border-amber-500/40 text-amber-300">
               <Shield className="h-3.5 w-3.5" />
-            ) : isTeacher ? (
+            </div>
+          ) : isTeacher ? (
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border bg-emerald-950/60 border-emerald-500/40 text-emerald-300">
               <BookOpen className="h-3.5 w-3.5" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="relative h-7 w-7 rounded-lg overflow-hidden shadow-sm shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Deadline Logo"
+                width={28}
+                height={28}
+                priority
+                className="h-full w-full object-contain"
+              />
+            </div>
+          )}
           <span className="text-sm font-bold tracking-tight text-white">
             Deadline
           </span>

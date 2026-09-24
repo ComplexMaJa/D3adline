@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -198,24 +199,26 @@ export function Sidebar({ profile: propProfile, onOpenCreateAssignment }: Sideba
               href={isAdmin ? "/admin" : "/dashboard"}
               className="flex items-center gap-2.5 group min-w-0"
             >
-              <div
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-200 shrink-0",
-                  isAdmin
-                    ? "bg-amber-950/60 border-amber-500/40 text-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.25)] group-hover:border-amber-400 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]"
-                    : isTeacher
-                    ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                    : "bg-purple-950/60 border-purple-500/40 text-purple-300 shadow-purple-glow-sm group-hover:border-purple-400 group-hover:shadow-purple-glow"
-                )}
-              >
-                {isAdmin ? (
+              {isAdmin ? (
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border bg-amber-950/60 border-amber-500/40 text-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.25)] group-hover:border-amber-400 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)] shrink-0 transition-all duration-200">
                   <Shield className="h-4 w-4 text-amber-300" />
-                ) : isTeacher ? (
+                </div>
+              ) : isTeacher ? (
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border bg-emerald-950/60 border-emerald-500/40 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.35)] shrink-0 transition-all duration-200">
                   <School className="h-4 w-4 text-emerald-300" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-purple-300" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="relative h-9 w-9 rounded-xl overflow-hidden shadow-purple-glow-sm group-hover:shadow-purple-glow group-hover:scale-105 transition-all duration-200 shrink-0">
+                  <Image
+                    src="/logo.png"
+                    alt="Deadline Logo"
+                    width={36}
+                    height={36}
+                    priority
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              )}
               <div className="min-w-0">
                 <span className="text-base font-bold tracking-tight text-white block leading-tight">
                   Deadline

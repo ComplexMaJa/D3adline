@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Sparkles, ArrowRight, Menu, X, Globe } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -55,10 +56,17 @@ export function LandingNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 group cursor-hover">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-400 group-hover:scale-110 group-hover:border-purple-400/50 transition-all duration-300">
-            <Sparkles className="h-4 w-4" />
+          <div className="relative h-8 w-8 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(168,85,247,0.35)] group-hover:shadow-[0_0_22px_rgba(168,85,247,0.6)] group-hover:scale-105 transition-all duration-300 shrink-0">
+            <Image
+              src="/logo.png"
+              alt="Deadline Logo"
+              width={32}
+              height={32}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
-          <span className="text-base font-display font-bold tracking-tight text-white">
+          <span className="text-base font-display font-bold tracking-tight text-white group-hover:text-purple-200 transition-colors">
             Deadline
           </span>
         </Link>

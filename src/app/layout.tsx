@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   keywords: ["student deadline tracker", "assignment manager", "university workload", "homework planner", "course organizer"],
   authors: [{ name: "Deadline" }],
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
