@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 
 export interface DepthTextProps {
@@ -218,4 +220,5 @@ const DepthText = ({
   );
 };
 
+export { DepthText };
 export default DepthText;
