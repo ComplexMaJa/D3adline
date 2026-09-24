@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { AssignmentCard } from "@/components/assignments/AssignmentCard";
 import { AssignmentDialog } from "@/components/forms/AssignmentDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SubmissionRequiredModal } from "@/components/assignments/SubmissionRequiredModal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -98,6 +99,7 @@ export function AssignmentsClient({
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = React.useState<Assignment | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [submissionPromptAssignment, setSubmissionPromptAssignment] = React.useState<Assignment | null>(null);
 
   const { profile, isTeacher, refreshCourses, openCreateAssignment, openJoinCourse } = useApp();
   const { t, language } = useLanguage();
@@ -226,6 +228,16 @@ export function AssignmentsClient({
 
   // Toggle complete
   const handleToggleComplete = async (assignment: Assignment) => {
+    const isStudentUser = !isTeacher && profile?.role !== "admin";
+
+    // Students cannot mark an assignment complete by clicking the checkmark; they must submit via the assignment page
+    if (isStudentUser) {
+      if (assignment.status !== "Completed" && assignment.progress !== 100) {
+        setSubmissionPromptAssignment(assignment);
+      }
+      return;
+    }
+
     const isNowCompleted = assignment.status !== "Completed";
     const newStatus: AssignmentStatus = isNowCompleted ? "Completed" : "In Progress";
     const newProgress = isNowCompleted ? 100 : 50;
@@ -557,12 +569,31 @@ export function AssignmentsClient({
                     <td className="p-3.5">
                       <button
                         onClick={() => handleToggleComplete(assignment)}
-                        className="text-zinc-500 hover:text-purple-400 transition-colors"
+                        className={cn(
+                          "transition-colors",
+                          !isTeacher && !isCompleted
+                            ? "text-zinc-600 hover:text-amber-400 cursor-pointer"
+                            : "text-zinc-500 hover:text-purple-400"
+                        )}
+                        title={
+                          !isTeacher && !isCompleted
+                            ? (language === "id"
+                                ? "Kumpulkan tugas Anda terlebih dahulu untuk menandainya selesai"
+                                : "Submit your coursework first before marking as complete")
+                            : (isCompleted
+                                ? (language === "id" ? "Tandai belum selesai" : "Mark incomplete")
+                                : (language === "id" ? "Tandai selesai" : "Mark complete"))
+                        }
                       >
                         {isCompleted ? (
                           <CheckCircle2 className="h-4 w-4 text-emerald-400 fill-emerald-950" />
                         ) : (
-                          <Circle className="h-4 w-4" />
+                          <Circle
+                            className={cn(
+                              "h-4 w-4",
+                              !isTeacher ? "hover:stroke-amber-400" : "hover:stroke-purple-400"
+                            )}
+                          />
                         )}
                       </button>
                     </td>
@@ -723,6 +754,13 @@ export function AssignmentsClient({
         title="Delete Assignment?"
         description={`Are you sure you want to delete "${assignmentToDelete?.title}"? This action cannot be undone.`}
         isLoading={isDeleting}
+      />
+
+      {/* Submission Required Notice Modal for students */}
+      <SubmissionRequiredModal
+        isOpen={!!submissionPromptAssignment}
+        onClose={() => setSubmissionPromptAssignment(null)}
+        assignment={submissionPromptAssignment}
       />
     </div>
   );

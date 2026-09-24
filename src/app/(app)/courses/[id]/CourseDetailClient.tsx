@@ -170,6 +170,21 @@ export function CourseDetailClient({
   };
 
   const handleToggleComplete = async (assignment: Assignment) => {
+    const isStudentUser = !isInstructor && profile?.role !== "admin";
+    const mySub = assignment.submissions?.find((s) => s.student_id === profile?.id);
+    const hasMyAttachment = assignment.attachments?.some((att) => att.user_id === profile?.id);
+    const hasSubmitted = Boolean(
+      assignment.has_submitted ||
+      mySub?.submitted_at ||
+      (mySub?.submission_text && mySub.submission_text.trim().length > 0) ||
+      (mySub?.submission_note && mySub.submission_note.trim().length > 0) ||
+      hasMyAttachment
+    );
+
+    if (isStudentUser && !hasSubmitted && assignment.status !== "Completed") {
+      return;
+    }
+
     const isNowCompleted = assignment.status !== "Completed";
     const newStatus = isNowCompleted ? "Completed" : "In Progress";
     const newProgress = isNowCompleted ? 100 : 50;

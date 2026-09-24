@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/components/layout/AppShell";
 import { triggerCompletionConfetti } from "@/lib/confetti";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { SpringCheck } from "@/components/ui/SpringCheck";
 import {
   getDeadlineInfo,
   getPriorityBadgeStyle,
@@ -133,7 +134,11 @@ export function AssignmentDetailClient({
     if (!profile?.id) return;
     setStudentProgress(newProg);
     const newStatus: AssignmentStatus =
-      newProg === 100 ? "Completed" : newProg > 0 ? "In Progress" : "Not Started";
+      newProg === 100 && mySubmission?.submitted_at
+        ? "Completed"
+        : newProg > 0
+        ? "In Progress"
+        : "Not Started";
     const now = new Date().toISOString();
 
     try {
@@ -924,31 +929,25 @@ export function AssignmentDetailClient({
                   key={subtask.id}
                   className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-[#161616] bg-[#0C0C0C] hover:border-[#262626] transition-colors group"
                 >
-                  <button
-                    onClick={() => handleToggleSubtask(subtask)}
-                    className="flex items-center gap-2.5 text-left flex-1 min-w-0"
-                  >
-                    {subtask.completed ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                    ) : (
-                      <Circle className="h-4 w-4 text-zinc-600 hover:text-purple-400 shrink-0" />
-                    )}
-                    <span
-                      className={cn(
-                        "text-xs truncate",
-                        subtask.completed
-                          ? "line-through text-zinc-500"
-                          : "text-zinc-200"
-                      )}
-                    >
-                      {subtask.title}
-                    </span>
-                  </button>
+                  <SpringCheck
+                    checked={subtask.completed}
+                    onChange={() => handleToggleSubtask(subtask)}
+                    label={subtask.title}
+                    boxSize={20}
+                    boxRadius={9999}
+                    fontSize={12}
+                    color="#71717a"
+                    fillColor="#10b981"
+                    checkColor="#09090b"
+                    strike="left"
+                    minHeight={26}
+                    className="flex-1 min-w-0 text-zinc-200"
+                  />
 
                   {canGrade && (
                     <button
                       onClick={() => handleDeleteSubtask(subtask.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-opacity shrink-0"
                       title={t.common.delete}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

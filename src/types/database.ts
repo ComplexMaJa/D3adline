@@ -91,6 +91,7 @@ export interface Assignment {
   subtasks?: Subtask[];
   attachments?: Attachment[];
   submissions?: AssignmentSubmission[];
+  has_submitted?: boolean;
 }
 
 export interface Subtask {
