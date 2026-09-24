@@ -12,21 +12,25 @@ export function TestimonialsSection() {
 
   // Responsive column configuration
   const [responsiveConfig, setResponsiveConfig] = React.useState({
-    columns: 4,
-    tileWidth: 340,
-    tileHeight: 210,
-    gap: 18,
+    columns: 5,
+    tileWidth: 360,
+    tileHeight: 220,
+    gap: 20,
   });
 
   React.useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
       if (w < 640) {
-        setResponsiveConfig({ columns: 2, tileWidth: 260, tileHeight: 185, gap: 12 });
+        setResponsiveConfig({ columns: 2, tileWidth: 280, tileHeight: 195, gap: 14 });
       } else if (w < 1024) {
-        setResponsiveConfig({ columns: 3, tileWidth: 300, tileHeight: 195, gap: 16 });
+        setResponsiveConfig({ columns: 3, tileWidth: 320, tileHeight: 205, gap: 16 });
+      } else if (w < 1440) {
+        setResponsiveConfig({ columns: 4, tileWidth: 350, tileHeight: 220, gap: 18 });
+      } else if (w < 1920) {
+        setResponsiveConfig({ columns: 5, tileWidth: 360, tileHeight: 220, gap: 20 });
       } else {
-        setResponsiveConfig({ columns: 4, tileWidth: 340, tileHeight: 210, gap: 18 });
+        setResponsiveConfig({ columns: 6, tileWidth: 370, tileHeight: 225, gap: 22 });
       }
     };
     update();
@@ -146,6 +150,45 @@ export function TestimonialsSection() {
       gradient: "from-blue-600 to-indigo-600",
       tag: language === "id" ? "Mahasiswa Terverifikasi" : "Verified Student",
     },
+    {
+      id: "rev-10",
+      quote: language === "id"
+        ? "Deteksi konflik jadwal otomatis dan pembagian milestone yang terstruktur menjaga riset skripsi saya tetap pada jalurnya tanpa rasa burnout."
+        : "The automated schedule conflict detection and clean milestone breakdowns kept my thesis research completely on track without burnout.",
+      author: "David Zhao",
+      role: language === "id" ? "Kebijakan Publik & Ekonomi, Princeton" : "Public Policy & Economics, Princeton",
+      university: "Princeton University",
+      rating: 5,
+      initials: "DZ",
+      gradient: "from-teal-600 to-cyan-600",
+      tag: language === "id" ? "Mahasiswa Terverifikasi" : "Verified Student",
+    },
+    {
+      id: "rev-11",
+      quote: language === "id"
+        ? "Beralih antara tugas mandiri dan tenggat praktikum kelompok dengan filter satu klik sangat menghemat waktu di masa UTS."
+        : "Switching between individual problem sets and group practicum deadlines with one-click filtering is a lifesaver during midterm month.",
+      author: "Anisa Wardani",
+      role: language === "id" ? "Ilmu Komputer, UI" : "Computer Science, Universitas Indonesia",
+      university: "Universitas Indonesia",
+      rating: 5,
+      initials: "AW",
+      gradient: "from-rose-600 to-pink-600",
+      tag: language === "id" ? "Mahasiswa Terverifikasi" : "Verified Student",
+    },
+    {
+      id: "rev-12",
+      quote: language === "id"
+        ? "Navigasi cepat berbasis keyboard tanpa lag. Palet AMOLED gelap membuat pengerjaan tugas fisika larut malam sangat nyaman."
+        : "Fast, keyboard-driven navigation with zero lag. The AMOLED dark palette makes working through late-night physics problem sets genuinely comfortable.",
+      author: "Julian Thorne",
+      role: language === "id" ? "Fisika Terapan, Caltech" : "Applied Physics, Caltech",
+      university: "Caltech",
+      rating: 5,
+      initials: "JT",
+      gradient: "from-indigo-600 to-violet-600",
+      tag: language === "id" ? "Peneliti Terverifikasi" : "Verified Researcher",
+    },
   ], [t, language]);
 
   const renderReviewTile = React.useCallback((item: typeof reviews[0]) => {
@@ -195,31 +238,33 @@ export function TestimonialsSection() {
   }, []);
 
   return (
-    <section className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-      {/* Background ambient lighting */}
+    <section className="relative w-full py-20 sm:py-28 overflow-hidden">
+      {/* Background ambient lighting glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full pointer-events-none blur-[140px] opacity-25"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] rounded-full pointer-events-none blur-[160px] opacity-20"
         style={{
-          background: "radial-gradient(ellipse at center, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.12) 50%, transparent 75%)",
+          background: "radial-gradient(ellipse at center, rgba(139,92,246,0.35) 0%, rgba(99,102,241,0.15) 50%, transparent 75%)",
         }}
       />
 
-      {/* Header — left-aligned */}
-      <div className="max-w-2xl mb-10 sm:mb-12 relative z-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-mono font-semibold uppercase tracking-widest mb-3">
-          <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
-          <span>{t.sectionBadge}</span>
+      {/* Header — left-aligned within content bounds */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8 sm:mb-12 relative z-20">
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-mono font-semibold uppercase tracking-widest mb-3">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+            <span>{t.sectionBadge}</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight text-white mb-4 leading-[1.1]">
+            {t.sectionTitle}
+          </h2>
+          <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
+            {t.sectionSubtitle}
+          </p>
         </div>
-        <h2 className="text-3xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight text-white mb-4 leading-[1.1]">
-          {t.sectionTitle}
-        </h2>
-        <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-          {t.sectionSubtitle}
-        </p>
       </div>
 
-      {/* 3D Perspective Drift Wall Container */}
-      <div className="relative w-full h-[540px] sm:h-[620px] lg:h-[680px] rounded-3xl overflow-hidden border border-white/[0.06] bg-[#05030A]/60 backdrop-blur-xl shadow-2xl">
+      {/* 3D Perspective Drift Wall Container — Covers full section width and expansive height */}
+      <div className="relative w-full h-[780px] sm:h-[900px] lg:h-[1020px] xl:h-[1100px] overflow-hidden">
         <DriftWall
           items={reviews}
           renderItem={renderReviewTile}
@@ -228,36 +273,28 @@ export function TestimonialsSection() {
           tileHeight={responsiveConfig.tileHeight}
           gap={responsiveConfig.gap}
           radius={18}
-          tilt={14}
-          turn={-12}
+          tilt={13}
+          turn={-11}
           roll={0}
           depth={90}
-          perspective={1350}
-          speed={24}
+          perspective={1400}
+          speed={22}
           direction="up"
-          variance={0.4}
+          variance={0.35}
           parallax={0.5}
-          pauseOnHover={true}
-          lift={44}
-          fade={0.55}
-          dim={0.82}
-          overlayColor="rgba(5, 3, 10, 0.4)"
+          pauseOnHover={false}
+          lift={46}
+          fade={0.32}
+          dim={0.84}
+          overlayColor="rgba(5, 3, 10, 0.35)"
           className="w-full h-full"
         />
 
-        {/* Soft edge vertical fade gradients */}
-        <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-[#05030A] to-transparent pointer-events-none z-10" />
-        <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#05030A] via-[#05030A]/70 to-transparent pointer-events-none z-10" />
-      </div>
-
-      {/* Bottom Interactive Guide Pill */}
-      <div className="flex items-center justify-center gap-2 mt-6 text-xs text-zinc-500 font-mono">
-        <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
-        <span>
-          {language === "id"
-            ? "Arahkan kursor pada ulasan untuk menghentikan animasi & membaca detail"
-            : "Hover over any review card to pause animation & inspect"}
-        </span>
+        {/* Soft edge multi-directional vignette gradients blending seamlessly into pure black page background */}
+        <div className="absolute top-0 inset-x-0 h-32 sm:h-44 bg-gradient-to-b from-black via-black/85 to-transparent pointer-events-none z-10" />
+        <div className="absolute bottom-0 inset-x-0 h-36 sm:h-48 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none z-10" />
+        <div className="absolute left-0 inset-y-0 w-24 sm:w-36 bg-gradient-to-r from-black via-black/75 to-transparent pointer-events-none z-10 hidden sm:block" />
+        <div className="absolute right-0 inset-y-0 w-24 sm:w-36 bg-gradient-to-l from-black via-black/75 to-transparent pointer-events-none z-10 hidden sm:block" />
       </div>
     </section>
   );
