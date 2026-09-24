@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { landingTranslations } from "@/lib/i18n/translations/landing";
 import { useReducedMotion, useMagnetic } from "@/lib/hooks/useMotion";
+import { GradientWaves } from "@/components/ui/GradientWaves";
 
 // ========================================
 // Animated Calendar Grid — Hero Visualization
@@ -158,25 +159,46 @@ export function LandingHero() {
   return (
     <section
       id="hero"
-      className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden"
+      className="relative isolate pt-28 pb-16 sm:pt-36 sm:pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden"
     >
-      {/* Animated aurora backdrop — parallax on mouse */}
-      <div
-        className="absolute top-[10%] left-1/2 w-[700px] sm:w-[1000px] h-[400px] sm:h-[550px] rounded-full blur-[160px] pointer-events-none -z-10 opacity-60 animate-glow-pulse"
-        style={{
-          background: "radial-gradient(ellipse, rgba(139,92,246,0.18) 0%, rgba(99,102,241,0.08) 50%, transparent 70%)",
-          transform: `translate(${-50 + (mouse.x - 0.5) * 12}%, ${(mouse.y - 0.5) * 8}%)`,
-        }}
-      />
-      <div
-        className="absolute top-[20%] left-[25%] w-[350px] h-[350px] rounded-full blur-[140px] pointer-events-none -z-10 opacity-40"
-        style={{
-          background: "radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 60%)",
-          transform: `translate(${(mouse.x - 0.5) * -8}%, ${(mouse.y - 0.5) * -6}%)`,
-        }}
-      />
+      {/* Dynamic Raymarched GradientWaves Background — Styled after React Bits (Pic 1) */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Deep midnight purple backdrop so transparent haze areas have atmospheric glow matching Pic 1 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#090314] via-[#100624] to-black pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <GradientWaves
+          horizonColor="#5227FF"
+          waveColor="#FF9FFC"
+          crestColor="#FFFFFF"
+          speed={0.28}
+          amplitude={2.5}
+          waveScale={0.6}
+          waveRatio={0.9}
+          swell={35}
+          turbulence={20}
+          tilt={1.11}
+          zoom={1.0}
+          height={5.4}
+          fogDepth={15}
+          detail="medium"
+          brightness={1.05}
+          opacity={1.0}
+          mouseInteraction={true}
+          parallaxStrength={0.45}
+          grain={true}
+          grainIntensity={0.045}
+          className="w-full h-full"
+        />
+
+        {/* Seamless edge blending to integrate into site aesthetics */}
+        {/* Top edge: soft vignette ensuring fixed navbar elements remain ultra-readable */}
+        <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none" />
+
+        {/* Bottom edge: smooth fade into the AMOLED black stats bar */}
+        <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         {/* Left: Copy */}
         <div className="text-center lg:text-left">
           {/* Hero Badge */}
@@ -186,16 +208,16 @@ export function LandingHero() {
           </div>
 
           {/* Main Headline — Staggered Word Reveal */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-display font-bold tracking-tight text-white leading-[1.08] mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-display font-bold tracking-tight text-white leading-[1.08] mb-6 drop-shadow-sm">
             <WordReveal text={t.titleLine1} delay={0.2} />
             <br />
-            <span className="bg-gradient-to-r from-purple-400 via-violet-300 to-indigo-300 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-purple-300 via-violet-200 to-indigo-200 bg-clip-text text-transparent">
               <WordReveal text={t.titleHighlight} delay={0.5} />
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-zinc-400 max-w-lg mx-auto lg:mx-0 leading-relaxed mb-8 animate-fade-in" style={{ animationDelay: "0.8s", animationFillMode: "both" }}>
+          <p className="text-base sm:text-lg text-zinc-300 max-w-lg mx-auto lg:mx-0 leading-relaxed mb-8 animate-fade-in" style={{ animationDelay: "0.8s", animationFillMode: "both" }}>
             {t.subtitle}
           </p>
 
