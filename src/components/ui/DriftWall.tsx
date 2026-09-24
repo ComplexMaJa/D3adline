@@ -1,13 +1,18 @@
+"use client";
+
 import { CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 export interface DriftWallItem {
-  image: string;
+  id?: string;
+  image?: string;
   title?: string;
   href?: string;
+  [key: string]: any;
 }
 
-export interface DriftWallProps {
-  items?: DriftWallItem[];
+export interface DriftWallProps<T = DriftWallItem> {
+  items?: T[];
+  renderItem?: (item: T, id: string, isHovered: boolean) => React.ReactNode;
   columns?: number;
   tileWidth?: number;
   tileHeight?: number;
@@ -56,8 +61,9 @@ const columnFactor = (index: number, variance: number): number => {
   return 1 + variance * pseudo;
 };
 
-const DriftWall = ({
-  items = DEFAULT_ITEMS,
+export const DriftWall = <T extends Record<string, any> = DriftWallItem>({
+  items = DEFAULT_ITEMS as unknown as T[],
+  renderItem,
   columns = 5,
   tileWidth = 200,
   tileHeight = 132,
@@ -72,7 +78,7 @@ const DriftWall = ({
   direction = 'up',
   variance = 0.45,
   parallax = 0.6,
-  pauseOnHover = false,
+  pauseOnHover = true,
   lift = 64,
   fade = 0.6,
   dim = 0.55,
@@ -80,7 +86,7 @@ const DriftWall = ({
   overlayColor = '#060010',
   className = '',
   style
-}: DriftWallProps) => {
+}: DriftWallProps<T>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const planeRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -107,8 +113,8 @@ const DriftWall = ({
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  const columnItems = useMemo<DriftWallItem[][]>(() => {
-    const cols: DriftWallItem[][] = Array.from({ length: columns }, () => []);
+  const columnItems = useMemo<T[][]>(() => {
+    const cols: T[][] = Array.from({ length: columns }, () => []);
     items.forEach((item, i) => cols[i % columns].push(item));
     return cols.map(col => (col.length ? col : items.slice(0, 1)));
   }, [items, columns]);
@@ -174,7 +180,9 @@ const DriftWall = ({
         for (let c = 0; c < trackRefs.current.length; c++) {
           const meta = columnMeta[c];
           if (!meta) continue;
-          const paused = wallHoveredRef.current && pauseOnHover;
+          // Halt scrolling if any review tile is hovered or if wall is hovered with pauseOnHover
+          const isTileHovered = activeIdRef.current !== null;
+          const paused = (wallHoveredRef.current && pauseOnHover) || isTileHovered;
           const factor = paused || hoveredColRef.current === c ? 0 : 1;
           const target = baseVelocities[c] * factor;
 
@@ -229,14 +237,17 @@ const DriftWall = ({
       }
       const hit = document.elementFromPoint(e.clientX, e.clientY);
       const tile = hit && hit.closest ? (hit.closest('[data-tile-id]') as HTMLElement | null) : null;
-      if (!tile) return;
+      if (!tile) {
+        release();
+        return;
+      }
       const id = tile.dataset.tileId ?? null;
       if (id === activeIdRef.current) return;
       activeIdRef.current = id;
       hoveredColRef.current = Number(tile.dataset.col);
       setActiveId(id);
     },
-    [parallax, reduced]
+    [parallax, reduced, release]
   );
 
   const handlePointerLeaveWall = useCallback((): void => {
@@ -277,13 +288,15 @@ const DriftWall = ({
     'w-full h-[calc(var(--dw-tile-h)+var(--dw-gap))] [transform-style:preserve-3d]'
   );
   const innerClass = cx(
-    'pointer-events-none absolute inset-[calc(var(--dw-gap)/2)] block overflow-hidden bg-[#0b0b12]',
+    'pointer-events-none absolute inset-[calc(var(--dw-gap)/2)] block overflow-hidden bg-[#09080F]',
     'rounded-[var(--dw-radius)] opacity-[var(--dw-dim)] [transform:translateZ(0)]',
-    'transition-[transform,opacity,box-shadow] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+    'border border-white/[0.08]',
+    'transition-[transform,opacity,box-shadow,border-color] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
     'group-[.is-active]/tile:opacity-100 group-[.is-active]/tile:[transform:translateZ(var(--dw-lift))]',
-    'group-[.is-active]/tile:shadow-[0_24px_60px_-18px_rgba(0,0,0,0.7)]',
+    'group-[.is-active]/tile:shadow-[0_24px_60px_-16px_rgba(139,92,246,0.35)]',
+    'group-[.is-active]/tile:border-purple-500/50',
     'group-focus-visible/tile:opacity-100 group-focus-visible/tile:[transform:translateZ(var(--dw-lift))]',
-    'group-focus-visible/tile:shadow-[0_24px_60px_-18px_rgba(0,0,0,0.7),0_0_0_2px_rgba(255,255,255,0.9)]'
+    'group-focus-visible/tile:shadow-[0_24px_60px_-16px_rgba(139,92,246,0.35),0_0_0_2px_rgba(255,255,255,0.9)]'
   );
   const imgClass = cx(
     'block h-full w-full select-none object-cover',
@@ -292,42 +305,53 @@ const DriftWall = ({
     'group-[.is-active]/tile:[filter:grayscale(0)_saturate(1.05)] group-focus-visible/tile:[filter:grayscale(0)_saturate(1.05)]'
   );
   const overlayClass = cx(
-    'pointer-events-none absolute inset-0 bg-[var(--dw-overlay)] opacity-[0.42]',
+    'pointer-events-none absolute inset-0 bg-[var(--dw-overlay)] opacity-[0.35]',
     'transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
     'group-[.is-active]/tile:opacity-0 group-focus-visible/tile:opacity-0'
   );
 
-  const renderTile = (item: DriftWallItem, id: string, colIndex: number) => {
+  const renderTile = (item: T, id: string, colIndex: number) => {
+    const isHovered = activeId === id;
     const inner = (
-      <span className={innerClass}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={item.image}
-          alt={item.title ?? ''}
-          loading="lazy"
-          decoding="async"
-          draggable={false}
-          className={imgClass}
-        />
-        <span className={overlayClass} aria-hidden="true" />
-      </span>
+      <div className={innerClass}>
+        {renderItem ? (
+          renderItem(item, id, isHovered)
+        ) : (item as DriftWallItem).image ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={(item as DriftWallItem).image}
+              alt={(item as DriftWallItem).title ?? ''}
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              className={imgClass}
+            />
+            <span className={overlayClass} aria-hidden="true" />
+          </>
+        ) : null}
+      </div>
     );
     const commonProps = {
       className: cx(tileClass, activeId === id && 'is-active'),
       'data-tile-id': id,
       'data-col': colIndex,
+      onPointerEnter: () => activate(id, colIndex),
+      onPointerLeave: () => {
+        if (activeIdRef.current === id) release();
+      },
       onFocus: () => activate(id, colIndex),
       onBlur: release
     };
-    if (item.href) {
+    if ((item as DriftWallItem).href) {
       return (
-        <a key={id} href={item.href} target="_blank" rel="noreferrer noopener" {...commonProps}>
+        <a key={id} href={(item as DriftWallItem).href} target="_blank" rel="noreferrer noopener" {...commonProps}>
           {inner}
         </a>
       );
     }
     return (
-      <div key={id} tabIndex={0} role="button" aria-label={item.title ?? 'tile'} {...commonProps}>
+      <div key={id} tabIndex={0} role="button" aria-label={(item as DriftWallItem).title ?? (item as any).author ?? 'review tile'} {...commonProps}>
         {inner}
       </div>
     );
@@ -344,7 +368,7 @@ const DriftWall = ({
       }}
       onPointerLeave={handlePointerLeaveWall}
       role="group"
-      aria-label="Drifting wall of tiles"
+      aria-label="Drifting review wall"
     >
       <div
         ref={planeRef}
