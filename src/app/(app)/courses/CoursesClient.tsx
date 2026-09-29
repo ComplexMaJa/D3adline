@@ -15,6 +15,8 @@ import { Plus, Search, BookOpen, KeyRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { cn } from "@/lib/utils";
+import { deleteCourseAction } from "@/lib/actions";
+import { AlertTriangle } from "lucide-react";
 
 interface CoursesClientProps {
   initialCourses: Course[];
@@ -28,6 +30,7 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [courseToDelete, setCourseToDelete] = React.useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
 
   const { profile, refreshCourses, openCreateCourse, openJoinCourse, isTeacher } = useApp();
   const supabase = createClient();
@@ -60,20 +63,18 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
     if (!courseToDelete) return;
 
     setIsDeleting(true);
+    setActionError(null);
     try {
-      const { error } = await supabase
-        .from("courses")
-        .delete()
-        .eq("id", courseToDelete.id);
-
-      if (error) throw error;
+      await deleteCourseAction(courseToDelete.id);
 
       setCourses((prev) => prev.filter((c) => c.id !== courseToDelete.id));
       await refreshCourses();
       router.refresh();
       setCourseToDelete(null);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error deleting course:", err);
+      const msg = err instanceof Error ? err.message : "Failed to delete course";
+      setActionError(msg);
     } finally {
       setIsDeleting(false);
     }
@@ -83,6 +84,20 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {actionError && (
+        <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-xs text-red-300 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+            <span>{actionError}</span>
+          </div>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-xs text-red-400 hover:text-red-200"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <Header
         title={t.courses.title}
         description={t.courses.description}

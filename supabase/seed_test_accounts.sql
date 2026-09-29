@@ -85,11 +85,27 @@ BEGIN
 
   -- Student 3 (Katherine Johnson)
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = v_student_3_id) THEN
-    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-    VALUES (v_student_3_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'katherine@deadline.app', crypt('TestPass123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Katherine Johnson","role":"student"}', now(), now());
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+    VALUES (v_student_3_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'katherine@deadline.app', crypt('TestPass123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Katherine Johnson","role":"student"}', now(), now(), '', '', '', '');
   ELSE
     UPDATE auth.users SET encrypted_password = crypt('TestPass123!', gen_salt('bf')), raw_user_meta_data = '{"display_name":"Katherine Johnson","role":"student"}' WHERE id = v_student_3_id;
   END IF;
+
+  -- Ensure GoTrue string fields are empty strings rather than NULL
+  UPDATE auth.users
+  SET 
+    confirmation_token = COALESCE(confirmation_token, ''),
+    recovery_token = COALESCE(recovery_token, ''),
+    email_change_token_new = COALESCE(email_change_token_new, ''),
+    email_change = COALESCE(email_change, ''),
+    email_change_token_current = COALESCE(email_change_token_current, ''),
+    reauthentication_token = COALESCE(reauthentication_token, ''),
+    phone_change = COALESCE(phone_change, ''),
+    phone_change_token = COALESCE(phone_change_token, '')
+  WHERE confirmation_token IS NULL 
+     OR recovery_token IS NULL 
+     OR email_change_token_new IS NULL 
+     OR email_change IS NULL;
 
   -- 2. Upsert Profiles
   INSERT INTO public.profiles (id, email, display_name, role, institution, created_at, updated_at)

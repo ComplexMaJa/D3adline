@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AssignmentDetailClient } from "./AssignmentDetailClient";
-import { Assignment, Course, Subtask, Attachment } from "@/types/database";
+import { Assignment, Course, Subtask, Attachment, SubtaskCompletion } from "@/types/database";
 
 export default async function AssignmentDetailPage({
   params,
@@ -10,6 +10,10 @@ export default async function AssignmentDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Fetch assignment with joined course
   const { data: assignmentData, error: assignmentError } = await supabase
@@ -66,6 +70,18 @@ export default async function AssignmentDetailPage({
     .eq("course_id", assignmentData.course_id)
     .order("enrolled_at", { ascending: true });
 
+  // Fetch student-specific subtask completions
+  let completions: SubtaskCompletion[] = [];
+  if (user && subtasksData && subtasksData.length > 0) {
+    const subtaskIds = subtasksData.map((s) => s.id);
+    const { data: compData } = await supabase
+      .from("assignment_subtask_completions")
+      .select("*")
+      .in("subtask_id", subtaskIds)
+      .eq("student_id", user.id);
+    completions = (compData || []) as SubtaskCompletion[];
+  }
+
   const assignment = assignmentData as Assignment;
   const subtasks = (subtasksData || []) as Subtask[];
   const attachments = (attachmentsData || []) as Attachment[];
@@ -81,6 +97,7 @@ export default async function AssignmentDetailPage({
       courses={courses}
       initialSubmissions={submissions}
       initialEnrollments={enrollments}
+      initialSubtaskCompletions={completions}
     />
   );
 }

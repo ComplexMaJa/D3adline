@@ -9,6 +9,7 @@ import { JoinCourseDialog } from "@/components/forms/JoinCourseDialog";
 import { Profile, Course, Assignment, UserRole } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { getDeadlineInfo } from "@/lib/deadline-utils";
+import { calculateRoleCourseMetrics } from "@/lib/assignment-state";
 import { useRouter } from "next/navigation";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
@@ -64,6 +65,8 @@ export function AppShell({
   const supabase = createClient();
   const router = useRouter();
 
+  const userRole: UserRole = profile?.role || "student";
+
   // Sync state if server layout props change (e.g. after router.refresh())
   React.useEffect(() => {
     setCourses(initialCourses);
@@ -75,46 +78,60 @@ export function AppShell({
     }
   }, [initialProfile]);
 
-  // Refresh courses helper
+  // Refresh courses helper - role-aware metrics calculation
   const refreshCourses = React.useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: rawCourses, error } = await supabase
         .from("courses")
-        .select(`
-          *,
-          assignments:assignments(id, status, progress, due_date, due_time)
-        `)
+        .select("*")
         .order("name", { ascending: true });
 
-      if (!error && data) {
-        const enrichedCourses: Course[] = data.map((c: any) => {
-          const assignmentsList = c.assignments || [];
-          const total = assignmentsList.length;
-          const completed = assignmentsList.filter(
-            (a: any) => a.status === "Completed" || a.progress === 100
-          ).length;
-          const overdue = assignmentsList.filter((a: any) => {
-            if (a.status === "Completed" || a.progress === 100) return false;
-            const info = getDeadlineInfo(a.due_date, a.due_time, a.status);
-            return info.isOverdue;
-          }).length;
-          const completion_percentage =
-            total > 0 ? Math.round((completed / total) * 100) : 0;
+      if (error || !rawCourses) return;
 
-          return {
-            ...c,
-            assignments_count: total,
-            completed_count: completed,
-            overdue_count: overdue,
-            completion_percentage,
-          };
-        });
-        setCourses(enrichedCourses);
+      let rawAssignments: any[] = [];
+      if (rawCourses.length > 0) {
+        const courseIds = rawCourses.map((c) => c.id);
+        const { data: assignmentsData } = await supabase
+          .from("assignments")
+          .select(`
+            id,
+            course_id,
+            user_id,
+            title,
+            description,
+            status,
+            priority,
+            progress,
+            due_date,
+            due_time,
+            created_at,
+            updated_at,
+            submissions:assignment_submissions(*),
+            attachments:assignment_attachments(*)
+          `)
+          .in("course_id", courseIds)
+          .order("due_date", { ascending: true });
+
+        rawAssignments = assignmentsData || [];
       }
+
+      const enrichedCourses = calculateRoleCourseMetrics({
+        courses: rawCourses as Course[],
+        assignments: rawAssignments,
+        userRole,
+        userId: user.id,
+      });
+
+      setCourses(enrichedCourses);
     } catch (err) {
       console.error("Error refreshing courses:", err);
     }
-  }, [supabase]);
+  }, [supabase, userRole]);
 
   // Initial load once on mount without loop
   React.useEffect(() => {
@@ -136,9 +153,9 @@ export function AppShell({
           if (prof) {
             setProfile({
               ...prof,
-              role: prof.role || (user.user_metadata?.role as any) || "student",
-              institution: prof.institution || user.user_metadata?.institution || null,
-              bio: prof.bio || user.user_metadata?.bio || null,
+              role: prof.role || "student",
+              institution: prof.institution || null,
+              bio: prof.bio || null,
             });
           } else {
             setProfile((current) => ({
@@ -149,11 +166,11 @@ export function AppShell({
                 user.user_metadata?.full_name ||
                 current?.display_name ||
                 user.email?.split("@")[0] ||
-                (user.user_metadata?.role === "teacher" ? "Instructor" : "Student"),
+                "Student",
               avatar_url: user.user_metadata?.avatar_url || current?.avatar_url || null,
-              role: (user.user_metadata?.role as any) || current?.role || "student",
-              institution: user.user_metadata?.institution || current?.institution || null,
-              bio: user.user_metadata?.bio || current?.bio || null,
+              role: current?.role || "student",
+              institution: current?.institution || null,
+              bio: current?.bio || null,
               created_at: user.created_at,
               updated_at: user.created_at,
             }));
@@ -188,7 +205,6 @@ export function AppShell({
     return courses.reduce((acc, c) => acc + (c.overdue_count || 0), 0);
   }, [courses]);
 
-  const userRole: UserRole = profile?.role || "student";
   const isAdmin = userRole === "admin";
   const isTeacher = userRole === "teacher" || isAdmin;
   const isStudent = userRole === "student";

@@ -187,6 +187,12 @@ export async function removeStudentFromCourseAction(courseId: string, studentId:
 
 /**
  * Server Action: Teacher or Admin grades student submission
+ * Uses database RPC grade_assignment_submission to strictly enforce:
+ * - student must be enrolled in course
+ * - teacher must own course (or be admin)
+ * - student must have a valid submission (submitted_at != null and deliverable exists)
+ * - grade between 0 and 100
+ * - preserves student deliverables and submission timestamp
  */
 export async function gradeSubmissionAction(
   submissionId: string,
@@ -202,27 +208,71 @@ export async function gradeSubmissionAction(
     throw new Error("Authentication required.");
   }
 
-  const { data, error } = await supabase
-    .from("assignment_submissions")
-    .update({
-      grade,
-      feedback: feedback?.trim() || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", submissionId)
-    .select(`*, student:profiles(*)`)
-    .single();
+  const { data, error } = await supabase.rpc("grade_assignment_submission", {
+    p_submission_id: submissionId,
+    p_grade: grade,
+    p_feedback: feedback?.trim() || "",
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
+  // Fetch full record with student profile for UI update
+  const { data: fullSub } = await supabase
+    .from("assignment_submissions")
+    .select(`*, student:profiles(*)`)
+    .eq("id", submissionId)
+    .single();
+
   revalidatePath("/submissions");
-  return { success: true, submission: data as AssignmentSubmission };
+  revalidatePath("/assignments");
+  return { success: true, submission: (fullSub || data) as AssignmentSubmission };
+}
+
+/**
+ * Server Action: Teacher or Admin deletes assignment
+ * Cleans up associated storage files from Supabase Storage before removing DB record.
+ */
+export async function deleteAssignmentAction(assignmentId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Authentication required.");
+  }
+
+  // Find all attachments for this assignment
+  const { data: attachments } = await supabase
+    .from("assignment_attachments")
+    .select("file_path")
+    .eq("assignment_id", assignmentId);
+
+  const filePaths = (attachments || []).map((a) => a.file_path).filter(Boolean);
+  if (filePaths.length > 0) {
+    await supabase.storage.from("assignment-files").remove(filePaths);
+  }
+
+  const { error } = await supabase
+    .from("assignments")
+    .delete()
+    .eq("id", assignmentId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/assignments");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  return { success: true };
 }
 
 /**
  * Server Action: Teacher or Admin deletes course
+ * Cleans up associated storage files for all course assignments before removing DB record.
  */
 export async function deleteCourseAction(courseId: string) {
   const supabase = await createClient();
@@ -234,6 +284,25 @@ export async function deleteCourseAction(courseId: string) {
     throw new Error("Authentication required.");
   }
 
+  // Find all assignments for this course
+  const { data: assignments } = await supabase
+    .from("assignments")
+    .select("id")
+    .eq("course_id", courseId);
+
+  const assignmentIds = (assignments || []).map((a) => a.id);
+  if (assignmentIds.length > 0) {
+    const { data: attachments } = await supabase
+      .from("assignment_attachments")
+      .select("file_path")
+      .in("assignment_id", assignmentIds);
+
+    const filePaths = (attachments || []).map((a) => a.file_path).filter(Boolean);
+    if (filePaths.length > 0) {
+      await supabase.storage.from("assignment-files").remove(filePaths);
+    }
+  }
+
   const { error } = await supabase.from("courses").delete().eq("id", courseId);
 
   if (error) {
@@ -242,5 +311,6 @@ export async function deleteCourseAction(courseId: string) {
 
   revalidatePath("/courses");
   revalidatePath("/admin/courses");
+  revalidatePath("/dashboard");
   return { success: true };
 }

@@ -136,6 +136,15 @@ export function SubmissionsClient({
     e.preventDefault();
     if (!selectedSubmission) return;
 
+    if (!selectedSubmission.submitted_at) {
+      setGradingError(
+        isId
+          ? "Mahasiswa ini belum mengumpulkan tugas secara resmi."
+          : "This student has not submitted the assignment yet."
+      );
+      return;
+    }
+
     const parsedGrade = gradeInput.trim() !== "" ? parseFloat(gradeInput) : null;
     if (parsedGrade !== null && (isNaN(parsedGrade) || parsedGrade < 0 || parsedGrade > 100)) {
       setGradingError(isId ? "Nilai harus berupa angka antara 0 dan 100." : "Grade must be a number between 0 and 100.");
@@ -589,6 +598,24 @@ export function SubmissionsClient({
               )}
             </div>
 
+            {/* Warning if unsubmitted */}
+            {!selectedSubmission.submitted_at && (
+              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-800/50 text-xs text-amber-300 flex items-start gap-2.5">
+                <div>
+                  <p className="font-semibold">
+                    {isId
+                      ? "Mahasiswa belum mengumpulkan tugas secara resmi"
+                      : "Student has not submitted the assignment"}
+                  </p>
+                  <p className="text-[11px] text-amber-400/80 mt-0.5">
+                    {isId
+                      ? "Anda hanya dapat memberikan nilai setelah mahasiswa mengirimkan tugas secara resmi."
+                      : "Grading is only permitted after the student provides an official submission deliverable."}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Error banner */}
             {gradingError && (
               <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/50 text-rose-300 text-xs">
@@ -610,6 +637,7 @@ export function SubmissionsClient({
                 value={gradeInput}
                 onChange={(e) => setGradeInput(e.target.value)}
                 placeholder="e.g. 95"
+                disabled={!selectedSubmission.submitted_at || isSubmittingGrade}
                 className="font-mono text-sm"
               />
             </div>
@@ -628,7 +656,8 @@ export function SubmissionsClient({
                     : "Write helpful feedback and guidance for the student..."
                 }
                 rows={4}
-                className="w-full rounded-xl border border-[#222226] bg-[#121216] px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:border-purple-500/60 focus:outline-none transition-colors resize-none"
+                disabled={!selectedSubmission.submitted_at || isSubmittingGrade}
+                className="w-full rounded-xl border border-[#222226] bg-[#121216] px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:border-purple-500/60 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed transition-colors resize-none"
               />
             </div>
 
@@ -646,7 +675,7 @@ export function SubmissionsClient({
               <Button
                 type="submit"
                 size="sm"
-                disabled={isSubmittingGrade}
+                disabled={!selectedSubmission.submitted_at || isSubmittingGrade}
                 className="gap-1.5"
               >
                 <Award className="h-3.5 w-3.5" />

@@ -19,7 +19,7 @@ import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
 import { UpcomingDeadlinesSection } from "@/components/dashboard/UpcomingDeadlinesSection";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { StreakCard } from "@/components/dashboard/StreakCard";
-import { parseISO, isPast, isToday, differenceInCalendarDays } from "date-fns";
+import { parseAssignmentDeadline, getDeadlineInfo } from "@/lib/deadline-utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface DashboardClientProps {
@@ -58,7 +58,7 @@ export function DashboardClient({
     setMetrics(initialMetrics);
   }, [initialAssignments, initialMetrics]);
 
-  // Determine Today's Focus assignment:
+  // Determine Today's Focus assignment using centralized deadline helper
   const todaysFocusAssignment = React.useMemo(() => {
     const incomplete = assignments.filter((a) => a.status !== "Completed" && a.progress < 100);
     if (incomplete.length === 0) return null;
@@ -68,11 +68,9 @@ export function DashboardClient({
     if (highPriority) return highPriority;
 
     // 2. Urgent / Due today or tomorrow
-    const today = new Date();
     const urgent = incomplete.find((a) => {
-      const deadline = parseISO(a.due_date);
-      const diff = differenceInCalendarDays(deadline, today);
-      return diff <= 1 && !isPast(deadline);
+      const info = getDeadlineInfo(a.due_date, a.due_time, a.status);
+      return (info.isDueToday || info.isDueTomorrow) && !info.isOverdue;
     });
     if (urgent) return urgent;
 
@@ -81,18 +79,17 @@ export function DashboardClient({
   }, [assignments]);
 
   // Determine Next Deadline assignment:
-  // Sort incomplete assignments chronologically and pick the first upcoming one (or the first incomplete one)
+  // Sort incomplete assignments chronologically and pick the first upcoming one
   const nextDeadlineAssignment = React.useMemo(() => {
     const incomplete = assignments.filter((a) => a.status !== "Completed" && a.progress < 100);
     if (incomplete.length === 0) return null;
 
     const sorted = [...incomplete].sort((a, b) => {
-      const dateA = `${a.due_date}T${a.due_time || "23:59:00"}`;
-      const dateB = `${b.due_date}T${b.due_time || "23:59:00"}`;
-      return dateA.localeCompare(dateB);
+      const timeA = parseAssignmentDeadline(a.due_date, a.due_time).getTime();
+      const timeB = parseAssignmentDeadline(b.due_date, b.due_time).getTime();
+      return timeA - timeB;
     });
 
-    // If today's focus is already displayed, pick the next one if available, otherwise pick the nearest
     if (sorted.length > 1 && todaysFocusAssignment && sorted[0].id === todaysFocusAssignment.id) {
       return sorted[1];
     }

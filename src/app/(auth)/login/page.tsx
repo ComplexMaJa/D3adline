@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Sparkles, Mail, Lock, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
+import { sanitizeRedirectUrl } from "@/lib/utils";
 
 function LoginForm() {
   const [email, setEmail] = React.useState("");
@@ -18,7 +19,7 @@ function LoginForm() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const redirectTo = sanitizeRedirectUrl(searchParams.get("redirectTo"));
 
   const supabase = createClient();
 
@@ -33,7 +34,7 @@ function LoginForm() {
     setError(null);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -43,7 +44,20 @@ function LoginForm() {
         return;
       }
 
-      router.push(redirectTo);
+      let destination = redirectTo;
+      if (redirectTo === "/dashboard" && authData?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+
+        if (profile?.role === "admin") {
+          destination = "/admin";
+        }
+      }
+
+      router.push(destination);
       router.refresh();
     } catch (err: unknown) {
       console.error("Login error:", err);

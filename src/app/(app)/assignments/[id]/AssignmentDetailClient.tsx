@@ -7,6 +7,7 @@ import {
   Assignment,
   Course,
   Subtask,
+  SubtaskCompletion,
   Attachment,
   AssignmentPriority,
   AssignmentStatus,
@@ -30,6 +31,9 @@ import {
   getStatusBadgeStyle,
 } from "@/lib/deadline-utils";
 import { formatBytes } from "@/lib/utils";
+import { isValidSubmission } from "@/lib/assignment-state";
+import { gradeSubmissionAction, deleteAssignmentAction } from "@/lib/actions";
+import { validateDeliverableFile } from "@/lib/file-validation";
 import { format, parseISO } from "date-fns";
 import {
   ArrowLeft,
@@ -65,6 +69,7 @@ interface AssignmentDetailClientProps {
   courses: Course[];
   initialSubmissions?: AssignmentSubmission[];
   initialEnrollments?: CourseEnrollment[];
+  initialSubtaskCompletions?: SubtaskCompletion[];
 }
 
 export function AssignmentDetailClient({
@@ -74,6 +79,7 @@ export function AssignmentDetailClient({
   courses,
   initialSubmissions = [],
   initialEnrollments = [],
+  initialSubtaskCompletions = [],
 }: AssignmentDetailClientProps) {
   const { t, language, dateLocale } = useLanguage();
   const { profile, userRole, isTeacher, isStudent, refreshCourses } = useApp();
@@ -82,6 +88,7 @@ export function AssignmentDetailClient({
   const [attachments, setAttachments] = React.useState<Attachment[]>(initialAttachments);
   const [submissions, setSubmissions] = React.useState<AssignmentSubmission[]>(initialSubmissions);
   const [enrollments, setEnrollments] = React.useState<CourseEnrollment[]>(initialEnrollments);
+  const [subtaskCompletions, setSubtaskCompletions] = React.useState<SubtaskCompletion[]>(initialSubtaskCompletions);
 
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState("");
   const [isAddingSubtask, setIsAddingSubtask] = React.useState(false);
@@ -193,6 +200,7 @@ export function AssignmentDetailClient({
   const [gradeInput, setGradeInput] = React.useState("");
   const [feedbackInput, setFeedbackInput] = React.useState("");
   const [isSavingGrade, setIsSavingGrade] = React.useState(false);
+  const [gradingModalError, setGradingModalError] = React.useState<string | null>(null);
 
   const handleOpenGradeModal = (target: {
     studentId: string;
@@ -208,6 +216,7 @@ export function AssignmentDetailClient({
         : ""
     );
     setFeedbackInput(target.submission?.feedback || "");
+    setGradingModalError(null);
   };
 
   // Student Turn-in Handler: Requires real deliverable (written text or file attachment)
@@ -280,50 +289,58 @@ export function AssignmentDetailClient({
     }
   };
 
-  // Teacher Save Grade Handler
+  // Teacher Save Grade Handler: Enforces existing valid submission and calls server action
   const handleSaveGrade = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gradingTarget) return;
 
+    if (!gradingTarget.submission?.id || !gradingTarget.submission.submitted_at) {
+      setGradingModalError(
+        language === "id"
+          ? "Mahasiswa ini belum mengumpulkan tugas secara resmi."
+          : "This student has not submitted the assignment yet."
+      );
+      return;
+    }
+
+    const parsedGrade = gradeInput.trim() !== "" ? parseFloat(gradeInput) : null;
+    if (parsedGrade !== null && (isNaN(parsedGrade) || parsedGrade < 0 || parsedGrade > 100)) {
+      setGradingModalError(
+        language === "id"
+          ? "Nilai harus berupa angka antara 0 dan 100."
+          : "Grade must be a number between 0 and 100."
+      );
+      return;
+    }
+
     setIsSavingGrade(true);
+    setGradingModalError(null);
+
     try {
-      const parsedGrade = gradeInput.trim() ? parseFloat(gradeInput) : null;
-      const now = new Date().toISOString();
+      const res = await gradeSubmissionAction(
+        gradingTarget.submission.id,
+        parsedGrade,
+        feedbackInput.trim() || null
+      );
 
-      const { data, error } = await supabase
-        .from("assignment_submissions")
-        .upsert(
-          {
-            assignment_id: assignment.id,
-            student_id: gradingTarget.studentId,
-            status: "Completed",
-            progress: 100,
-            grade: parsedGrade,
-            feedback: feedbackInput.trim() || null,
-            updated_at: now,
-          },
-          { onConflict: "assignment_id,student_id" }
-        )
-        .select(`*, student:profiles(*)`)
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
+      if (res.submission) {
         setSubmissions((prev) => {
           const index = prev.findIndex((s) => s.student_id === gradingTarget.studentId);
           if (index >= 0) {
             const copy = [...prev];
-            copy[index] = { ...copy[index], ...data };
+            copy[index] = { ...copy[index], ...res.submission };
             return copy;
           }
-          return [data, ...prev];
+          return [res.submission, ...prev];
         });
       }
 
       setGradingTarget(null);
-    } catch (err) {
+      router.refresh();
+    } catch (err: unknown) {
       console.error("Error saving grade:", err);
+      const msg = err instanceof Error ? err.message : "Failed to save grade";
+      setGradingModalError(msg);
     } finally {
       setIsSavingGrade(false);
     }
@@ -506,41 +523,114 @@ export function AssignmentDetailClient({
 
   // Subtask: Toggle
   const handleToggleSubtask = async (subtask: Subtask) => {
-    const updatedCompleted = !subtask.completed;
+    if (canGrade) {
+      // Teacher toggling canonical subtask definition
+      const updatedCompleted = !subtask.completed;
+      const newSubtasks = subtasks.map((s) =>
+        s.id === subtask.id ? { ...s, completed: updatedCompleted } : s
+      );
+      setSubtasks(newSubtasks);
 
-    const newSubtasks = subtasks.map((s) =>
-      s.id === subtask.id ? { ...s, completed: updatedCompleted } : s
-    );
-    setSubtasks(newSubtasks);
+      const completedCount = newSubtasks.filter((s) => s.completed).length;
+      const computedProgress =
+        newSubtasks.length > 0
+          ? Math.round((completedCount / newSubtasks.length) * 100)
+          : assignment.progress;
 
-    // Auto calculate progress recommendation from subtasks
-    const completedCount = newSubtasks.filter((s) => s.completed).length;
-    const computedProgress =
-      newSubtasks.length > 0
-        ? Math.round((completedCount / newSubtasks.length) * 100)
-        : assignment.progress;
-
-    if (computedProgress === 100 && assignment.progress !== 100) {
-      triggerCompletionConfetti();
-    }
-
-    try {
-      await supabase
-        .from("assignment_subtasks")
-        .update({
-          completed: updatedCompleted,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", subtask.id);
-
-      // Sync progress
-      if (canGrade) {
-        handleProgressChange(computedProgress);
-      } else {
-        handleSaveStudentProgress(computedProgress);
+      if (computedProgress === 100 && assignment.progress !== 100) {
+        triggerCompletionConfetti();
       }
-    } catch (err) {
-      console.error("Error updating subtask:", err);
+
+      try {
+        const { error } = await supabase
+          .from("assignment_subtasks")
+          .update({
+            completed: updatedCompleted,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", subtask.id);
+
+        if (error) throw error;
+        handleProgressChange(computedProgress);
+      } catch (err) {
+        console.error("Error updating canonical subtask:", err);
+        setSubtasks(subtasks);
+      }
+    } else if (profile?.id) {
+      // Student toggling personal subtask completion
+      const currentCompleted = subtaskCompletions.some(
+        (c) => c.subtask_id === subtask.id && c.completed
+      );
+      const newCompleted = !currentCompleted;
+
+      const prevCompletions = subtaskCompletions;
+      setSubtaskCompletions((prev) => {
+        const idx = prev.findIndex((c) => c.subtask_id === subtask.id);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], completed: newCompleted };
+          return copy;
+        }
+        return [
+          ...prev,
+          {
+            id: `temp-${Date.now()}`,
+            subtask_id: subtask.id,
+            student_id: profile.id,
+            completed: newCompleted,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ];
+      });
+
+      // Recalculate personal student progress
+      const studentCompletedCount = subtasks.filter((s) =>
+        s.id === subtask.id
+          ? newCompleted
+          : subtaskCompletions.some((c) => c.subtask_id === s.id && c.completed)
+      ).length;
+      const computedProg =
+        subtasks.length > 0
+          ? Math.round((studentCompletedCount / subtasks.length) * 100)
+          : studentProgress;
+
+      if (computedProg === 100 && studentProgress !== 100) {
+        triggerCompletionConfetti();
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("assignment_subtask_completions")
+          .upsert(
+            {
+              subtask_id: subtask.id,
+              student_id: profile.id,
+              completed: newCompleted,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "subtask_id,student_id" }
+          )
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setSubtaskCompletions((prev) => {
+            const idx = prev.findIndex((c) => c.subtask_id === subtask.id);
+            if (idx >= 0) {
+              const copy = [...prev];
+              copy[idx] = data as SubtaskCompletion;
+              return copy;
+            }
+            return [...prev, data as SubtaskCompletion];
+          });
+        }
+        await handleSaveStudentProgress(computedProg);
+      } catch (err) {
+        console.error("Error updating personal subtask completion:", err);
+        setSubtaskCompletions(prevCompletions);
+      }
     }
   };
 
@@ -555,25 +645,15 @@ export function AssignmentDetailClient({
     }
   };
 
-  // Attachments: Upload file to Supabase Storage
+  // Attachments: Upload file to Supabase Storage with 2-step rollback
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
-    const BLOCKED_EXTENSIONS = ["exe", "bat", "cmd", "sh", "msi", "vbs", "scr", "com", "pif"];
-
-    const fileExt = file.name.split(".").pop()?.toLowerCase();
-
-    if (file.size > MAX_FILE_SIZE) {
-      setUploadError(t.assignments.detail.fileSizeExceeded);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    if (fileExt && BLOCKED_EXTENSIONS.includes(fileExt)) {
-      setUploadError(t.assignments.detail.blockedExtension);
+    const validation = validateDeliverableFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error || t.assignments.detail.fileSizeExceeded);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -581,6 +661,7 @@ export function AssignmentDetailClient({
     setIsUploadingFile(true);
     setUploadError(null);
 
+    let uploadedFilePath: string | null = null;
     try {
       const {
         data: { user },
@@ -588,6 +669,7 @@ export function AssignmentDetailClient({
       if (!user) throw new Error("User not authenticated");
       const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const filePath = `${user.id}/${assignment.id}/${Date.now()}_${safeName}`;
+      uploadedFilePath = filePath;
 
       // Upload to Storage
       const { error: storageError } = await supabase.storage
@@ -605,18 +687,31 @@ export function AssignmentDetailClient({
           file_name: file.name,
           file_path: filePath,
           file_size: file.size,
-          file_type: file.type || fileExt || "file",
+          file_type: file.type || validation.extension || "file",
         })
         .select()
         .single();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Rollback storage object
+        await supabase.storage.from("assignment-files").remove([filePath]);
+        throw dbError;
+      }
+
       if (attachmentRecord) {
         setAttachments((prev) => [attachmentRecord, ...prev]);
       }
     } catch (err: unknown) {
       console.error("Upload error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to upload attachment.";
+      if (uploadedFilePath) {
+        try {
+          await supabase.storage.from("assignment-files").remove([uploadedFilePath]);
+        } catch {
+          // ignore rollback failure
+        }
+      }
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to upload attachment.";
       setUploadError(errorMessage);
     } finally {
       setIsUploadingFile(false);
@@ -640,44 +735,55 @@ export function AssignmentDetailClient({
     }
   };
 
-  // Attachments: Delete
+  // Attachments: Delete with rollback on failure
   const handleDeleteAttachment = async (attachment: Attachment) => {
+    const prevAttachments = attachments;
     setAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
 
     try {
-      await supabase.storage
+      const { error: storageErr } = await supabase.storage
         .from("assignment-files")
         .remove([attachment.file_path]);
 
-      await supabase
+      if (storageErr) {
+        console.warn("Storage deletion warning:", storageErr);
+      }
+
+      const { error: dbErr } = await supabase
         .from("assignment_attachments")
         .delete()
         .eq("id", attachment.id);
+
+      if (dbErr) throw dbErr;
     } catch (err) {
       console.error("Error deleting attachment:", err);
+      setAttachments(prevAttachments);
+      setUploadError(
+        language === "id"
+          ? "Gagal menghapus berkas lampiran."
+          : "Failed to delete attachment. Please try again."
+      );
     }
   };
 
-  // Delete Assignment
+  // Delete Assignment using Server Action with full storage cleanup
   const handleDeleteAssignment = async () => {
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from("assignments")
-        .delete()
-        .eq("id", assignment.id);
-
-      if (error) throw error;
+      await deleteAssignmentAction(assignment.id);
       await refreshCourses();
       router.push("/assignments");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error deleting assignment:", err);
-    } finally {
       setIsDeleting(false);
     }
   };
 
-  const completedSubtasksCount = subtasks.filter((s) => s.completed).length;
+  const completedSubtasksCount = canGrade
+    ? subtasks.filter((s) => s.completed).length
+    : subtasks.filter((s) =>
+        subtaskCompletions.some((c) => c.subtask_id === s.id && c.completed)
+      ).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -924,37 +1030,45 @@ export function AssignmentDetailClient({
             </div>
           ) : (
             <div className="space-y-2">
-              {subtasks.map((subtask) => (
-                <div
-                  key={subtask.id}
-                  className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-[#161616] bg-[#0C0C0C] hover:border-[#262626] transition-colors group"
-                >
-                  <SpringCheck
-                    checked={subtask.completed}
-                    onChange={() => handleToggleSubtask(subtask)}
-                    label={subtask.title}
-                    boxSize={20}
-                    boxRadius={9999}
-                    fontSize={12}
-                    color="#71717a"
-                    fillColor="#10b981"
-                    checkColor="#09090b"
-                    strike="left"
-                    minHeight={26}
-                    className="flex-1 min-w-0 text-zinc-200"
-                  />
+              {subtasks.map((subtask) => {
+                const isChecked = canGrade
+                  ? subtask.completed
+                  : subtaskCompletions.some(
+                      (c) => c.subtask_id === subtask.id && c.completed
+                    );
 
-                  {canGrade && (
-                    <button
-                      onClick={() => handleDeleteSubtask(subtask.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-opacity shrink-0"
-                      title={t.common.delete}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                return (
+                  <div
+                    key={subtask.id}
+                    className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-[#161616] bg-[#0C0C0C] hover:border-[#262626] transition-colors group"
+                  >
+                    <SpringCheck
+                      checked={isChecked}
+                      onChange={() => handleToggleSubtask(subtask)}
+                      label={subtask.title}
+                      boxSize={20}
+                      boxRadius={9999}
+                      fontSize={12}
+                      color="#71717a"
+                      fillColor="#10b981"
+                      checkColor="#09090b"
+                      strike="left"
+                      minHeight={26}
+                      className="flex-1 min-w-0 text-zinc-200"
+                    />
+
+                    {canGrade && (
+                      <button
+                        onClick={() => handleDeleteSubtask(subtask.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-opacity shrink-0"
+                        title={t.common.delete}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1610,6 +1724,32 @@ export function AssignmentDetailClient({
               </div>
             )}
 
+            {/* If student hasn't submitted officially, show warning */}
+            {!gradingTarget.submission?.submitted_at && (
+              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-800/50 text-xs text-amber-300 flex items-start gap-2.5">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">
+                    {language === "id"
+                      ? "Mahasiswa belum menyerahkan tugas"
+                      : "Student has not submitted the assignment"}
+                  </p>
+                  <p className="text-[11px] text-amber-400/80 mt-0.5">
+                    {language === "id"
+                      ? "Anda hanya dapat memberikan nilai setelah mahasiswa mengirimkan teks jawaban atau berkas lampiran tugas."
+                      : "Grading is only permitted after the student provides an official submission deliverable."}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {gradingModalError && (
+              <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-xs text-red-300 flex items-start gap-2.5">
+                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <span>{gradingModalError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSaveGrade} className="space-y-4">
               {/* Score Input */}
               <div>
@@ -1627,6 +1767,7 @@ export function AssignmentDetailClient({
                       value={gradeInput}
                       onChange={(e) => setGradeInput(e.target.value)}
                       required
+                      disabled={!gradingTarget.submission?.submitted_at || isSavingGrade}
                       className="text-sm h-10 pr-12 font-mono font-bold"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">
@@ -1641,7 +1782,8 @@ export function AssignmentDetailClient({
                         type="button"
                         key={preset}
                         onClick={() => setGradeInput(String(preset))}
-                        className="px-2 py-1.5 rounded-lg text-[10px] font-mono font-semibold bg-[#141416] border border-[#242428] text-zinc-300 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
+                        disabled={!gradingTarget.submission?.submitted_at || isSavingGrade}
+                        className="px-2 py-1.5 rounded-lg text-[10px] font-mono font-semibold bg-[#141416] border border-[#242428] text-zinc-300 hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40 disabled:pointer-events-none transition-colors"
                       >
                         {preset}
                       </button>
@@ -1660,7 +1802,8 @@ export function AssignmentDetailClient({
                   onChange={(e) => setFeedbackInput(e.target.value)}
                   placeholder={t.assignments.detail.feedbackPlaceholder}
                   rows={4}
-                  className="w-full rounded-xl border border-[#222226] bg-[#070707] px-3.5 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-none"
+                  disabled={!gradingTarget.submission?.submitted_at || isSavingGrade}
+                  className="w-full rounded-xl border border-[#222226] bg-[#070707] px-3.5 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors resize-none"
                 />
               </div>
 
@@ -1678,6 +1821,7 @@ export function AssignmentDetailClient({
                   type="submit"
                   size="sm"
                   isLoading={isSavingGrade}
+                  disabled={!gradingTarget.submission?.submitted_at}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white"
                 >
                   <Award className="h-3.5 w-3.5" />

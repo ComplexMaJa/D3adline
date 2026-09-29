@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CourseDetailClient } from "./CourseDetailClient";
-import { Course, Assignment } from "@/types/database";
+import { Course, Assignment, UserRole } from "@/types/database";
 import { getDeadlineInfo } from "@/lib/deadline-utils";
+import { deriveStudentAssignmentState } from "@/lib/assignment-state";
 
 export default async function CourseDetailPage({
   params,
@@ -17,11 +18,19 @@ export default async function CourseDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("*").eq("id", user.id).single()
-    : { data: null };
+  let userRole: UserRole = "student";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role) {
+      userRole = profile.role;
+    }
+  }
 
-  const isStudent = profile?.role === "student";
+  const isStudent = userRole === "student";
 
   // Fetch course
   const { data: courseData, error: courseError } = await supabase
@@ -41,7 +50,8 @@ export default async function CourseDetailPage({
       *,
       course:courses(*),
       submissions:assignment_submissions(*),
-      attachments:assignment_attachments(*)
+      attachments:assignment_attachments(*),
+      subtasks:assignment_subtasks(*)
     `)
     .eq("course_id", id)
     .order("due_date", { ascending: true });
@@ -56,77 +66,81 @@ export default async function CourseDetailPage({
     .eq("course_id", id)
     .order("enrolled_at", { ascending: true });
 
-  const rawAssignments = (assignmentsData || []) as Assignment[];
+  const rawAssignments = (assignmentsData || []) as any[];
   const enrollments = (enrollmentsData || []) as any[];
 
-  // For students, fetch their individual submissions to reflect their personal progress
-  let studentSubmissions: any[] = [];
+  // For students, fetch their subtask completions
+  let subtaskCompletions: any[] = [];
   if (isStudent && user) {
-    const { data: subs } = await supabase
-      .from("assignment_submissions")
+    const { data: compData } = await supabase
+      .from("assignment_subtask_completions")
       .select("*")
       .eq("student_id", user.id);
-    studentSubmissions = subs || [];
-  }
-
-  const submissionByAssignment = new Map<string, any>();
-  for (const s of studentSubmissions) {
-    submissionByAssignment.set(s.assignment_id, s);
+    subtaskCompletions = compData || [];
   }
 
   const assignments: Assignment[] = rawAssignments.map((a) => {
-    const sub = isStudent
-      ? (submissionByAssignment.get(a.id) || a.submissions?.find((s: any) => s.student_id === user?.id))
-      : null;
-    const hasMyAttachment = Boolean(user && a.attachments?.some((att: any) => att.user_id === user.id));
-    const hasSubmitted = Boolean(
-      sub?.submitted_at ||
-      (sub?.submission_text && sub.submission_text.trim().length > 0) ||
-      (sub?.submission_note && sub.submission_note.trim().length > 0) ||
-      hasMyAttachment
-    );
+    if (isStudent && user) {
+      const mySub = a.submissions?.find((s: any) => s.student_id === user.id);
+      const myAtts = a.attachments?.filter((att: any) => att.user_id === user.id);
+      const studentState = deriveStudentAssignmentState(
+        a,
+        user.id,
+        mySub,
+        myAtts,
+        subtaskCompletions
+      );
 
-    if (isStudent) {
-      if (sub) {
-        return {
-          ...a,
-          status: sub.status,
-          progress: sub.progress,
-          has_submitted: hasSubmitted,
-        };
-      } else {
-        return {
-          ...a,
-          status: "Not Started" as const,
-          progress: 0,
-          has_submitted: false,
-        };
-      }
+      return {
+        ...a,
+        status: studentState.status,
+        progress: studentState.progress,
+        has_submitted: studentState.hasSubmitted,
+      };
     }
+
     return {
       ...a,
-      has_submitted: hasSubmitted,
+      has_submitted: false,
     };
   });
 
   // Calculate course metrics
   const total = assignments.length;
-  const completed = assignments.filter(
-    (a) => a.status === "Completed" || a.progress === 100
-  ).length;
-  const inProgress = assignments.filter(
-    (a) => a.status === "In Progress" && a.progress < 100
-  ).length;
-  const overdue = assignments.filter((a) => {
-    if (a.status === "Completed" || a.progress === 100) return false;
-    return getDeadlineInfo(a.due_date, a.due_time, a.status).isOverdue;
-  }).length;
+  let completed = 0;
+  let inProgress = 0;
+  let overdue = 0;
+
+  for (const a of assignments) {
+    if (isStudent) {
+      if (a.status === "Completed" || a.progress === 100 || a.has_submitted) {
+        completed++;
+      } else if (a.status === "In Progress" || a.progress > 0) {
+        inProgress++;
+      } else if (a.status === "Overdue") {
+        overdue++;
+      }
+    } else {
+      if (a.status === "Completed" || a.progress === 100) {
+        completed++;
+      } else if (a.status === "In Progress") {
+        inProgress++;
+      } else {
+        const deadline = getDeadlineInfo(a.due_date, a.due_time, a.status);
+        if (deadline.isOverdue) {
+          overdue++;
+        }
+      }
+    }
+  }
+
   const completionPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const course: Course = {
     ...courseData,
     assignments_count: total,
     completed_count: completed,
+    overdue_count: overdue,
     completion_percentage: completionPercentage,
     enrolled_students_count: enrollments.length,
   };

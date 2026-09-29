@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { DashboardClient } from "./DashboardClient";
-import { Assignment, Course, DashboardMetrics } from "@/types/database";
-import { differenceInCalendarDays, isPast, isToday, parseISO, startOfDay } from "date-fns";
+import { Assignment, Course, DashboardMetrics, Profile, UserRole } from "@/types/database";
+import {
+  calculateRoleCourseMetrics,
+  calculateRoleDashboardMetrics,
+  deriveStudentAssignmentState,
+} from "@/lib/assignment-state";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -9,97 +13,73 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch all assignments for user with courses and submissions
+  // Fetch current user profile to determine authoritative role
+  let userRole: UserRole = "student";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role) {
+      userRole = profile.role;
+    }
+  }
+
+  // Fetch all assignments with course data, submissions, attachments, subtasks
   const { data: rawAssignments } = await supabase
     .from("assignments")
     .select(`
       *,
       course:courses(*),
-      submissions:assignment_submissions(*)
+      submissions:assignment_submissions(*),
+      attachments:assignment_attachments(*),
+      subtasks:assignment_subtasks(*)
     `)
     .order("due_date", { ascending: true });
 
-  const assignments: Assignment[] = ((rawAssignments || []) as any[]).map((a) => {
-    if (user && a.submissions && a.submissions.length > 0) {
-      const mySub = a.submissions.find((s: any) => s.student_id === user.id);
-      if (mySub) {
-        return {
-          ...a,
-          status: mySub.status,
-          progress: mySub.progress,
-        };
-      }
+  const assignmentList = (rawAssignments || []) as any[];
+
+  // If student: overlay personal submission & subtask completion state
+  const assignments: Assignment[] = assignmentList.map((a) => {
+    if (userRole === "student" && user) {
+      const mySub = a.submissions?.find((s: any) => s.student_id === user.id);
+      const myAtts = a.attachments?.filter((att: any) => att.user_id === user.id);
+      const studentState = deriveStudentAssignmentState(
+        a,
+        user.id,
+        mySub,
+        myAtts
+      );
+
+      return {
+        ...a,
+        status: studentState.status,
+        progress: studentState.progress,
+        has_submitted: studentState.hasSubmitted,
+      };
     }
     return a;
   });
 
-
-  // Fetch courses with assignment stats
+  // Fetch accessible courses
   const { data: rawCourses } = await supabase
     .from("courses")
-    .select(`
-      *,
-      assignments:assignments(id, status, progress)
-    `)
+    .select("*")
     .order("name", { ascending: true });
 
-  const courses: Course[] = (rawCourses || []).map((c: any) => {
-    const list = c.assignments || [];
-    const total = list.length;
-    const completed = list.filter(
-      (a: any) => a.status === "Completed" || a.progress === 100
-    ).length;
-    const completion_percentage =
-      total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    return {
-      ...c,
-      assignments_count: total,
-      completed_count: completed,
-      completion_percentage,
-    };
+  const courses: Course[] = calculateRoleCourseMetrics({
+    courses: (rawCourses || []) as Course[],
+    assignments: assignmentList,
+    userRole,
+    userId: user?.id || "",
   });
 
-  // Calculate real metrics
-  const now = new Date();
-  const today = startOfDay(now);
-
-  const totalAssignments = assignments.length;
-  const completedAssignments = assignments.filter(
-    (a) => a.status === "Completed" || a.progress === 100
-  ).length;
-  const pendingAssignments = totalAssignments - completedAssignments;
-
-  let overdueAssignments = 0;
-  let dueThisWeek = 0;
-
-  assignments.forEach((a) => {
-    const isCompleted = a.status === "Completed" || a.progress === 100;
-    if (!isCompleted) {
-      const deadline = parseISO(a.due_date);
-      const days = differenceInCalendarDays(deadline, today);
-
-      if (days < 0 || (days === 0 && a.status === "Overdue")) {
-        overdueAssignments++;
-      } else if (days >= 0 && days <= 7) {
-        dueThisWeek++;
-      }
-    }
+  const metrics: DashboardMetrics = calculateRoleDashboardMetrics({
+    assignments: assignmentList,
+    userRole,
+    userId: user?.id || "",
   });
-
-  const completionPercentage =
-    totalAssignments > 0
-      ? Math.round((completedAssignments / totalAssignments) * 100)
-      : 0;
-
-  const metrics: DashboardMetrics = {
-    totalAssignments,
-    completedAssignments,
-    pendingAssignments,
-    overdueAssignments,
-    dueThisWeek,
-    completionPercentage,
-  };
 
   return (
     <DashboardClient

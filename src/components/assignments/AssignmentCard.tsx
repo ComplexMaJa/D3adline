@@ -10,6 +10,7 @@ import {
   getPriorityBadgeStyle,
   getStatusBadgeStyle,
 } from "@/lib/deadline-utils";
+import { isValidSubmission } from "@/lib/assignment-state";
 import { triggerCompletionConfetti } from "@/lib/confetti";
 import {
   Clock,
@@ -61,10 +62,7 @@ export function AssignmentCard({
 
   const hasSubmitted = Boolean(
     assignment.has_submitted ||
-    mySubmission?.submitted_at ||
-    (mySubmission?.submission_text && mySubmission.submission_text.trim().length > 0) ||
-    (mySubmission?.submission_note && mySubmission.submission_note.trim().length > 0) ||
-    hasMyAttachment
+    isValidSubmission(mySubmission, assignment.attachments)
   );
 
   const deadlineInfo = getDeadlineInfo(

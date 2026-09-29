@@ -21,6 +21,7 @@ import {
   getPriorityBadgeStyle,
   getStatusBadgeStyle,
 } from "@/lib/deadline-utils";
+import { deleteAssignmentAction } from "@/lib/actions";
 import {
   Search,
   Plus,
@@ -100,6 +101,7 @@ export function AssignmentsClient({
   const [assignmentToDelete, setAssignmentToDelete] = React.useState<Assignment | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [submissionPromptAssignment, setSubmissionPromptAssignment] = React.useState<Assignment | null>(null);
+  const [actionError, setActionError] = React.useState<string | null>(null);
 
   const { profile, isTeacher, refreshCourses, openCreateAssignment, openJoinCourse } = useApp();
   const { t, language } = useLanguage();
@@ -293,6 +295,11 @@ export function AssignmentsClient({
       router.refresh();
     } catch (err) {
       console.error("Error toggling completion:", err);
+      setActionError(
+        language === "id"
+          ? "Gagal memperbarui progres tugas. Silakan coba lagi."
+          : "Failed to update assignment progress. Please try again."
+      );
       setAssignments(initialAssignments);
     }
   };
@@ -301,21 +308,19 @@ export function AssignmentsClient({
   const handleConfirmDelete = async () => {
     if (!assignmentToDelete) return;
     setIsDeleting(true);
+    setActionError(null);
 
     try {
-      const { error } = await supabase
-        .from("assignments")
-        .delete()
-        .eq("id", assignmentToDelete.id);
-
-      if (error) throw error;
+      await deleteAssignmentAction(assignmentToDelete.id);
 
       setAssignments((prev) => prev.filter((a) => a.id !== assignmentToDelete.id));
       await refreshCourses();
       router.refresh();
       setAssignmentToDelete(null);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error deleting assignment:", err);
+      const msg = err instanceof Error ? err.message : "Failed to delete assignment";
+      setActionError(msg);
     } finally {
       setIsDeleting(false);
     }
@@ -361,6 +366,21 @@ export function AssignmentsClient({
           ) : undefined
         }
       />
+
+      {actionError && (
+        <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-xs text-red-300 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+            <span>{actionError}</span>
+          </div>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-xs text-red-400 hover:text-red-200"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Filter and Control Toolbar */}
       <div className="rounded-xl border border-[#1C1C1C] bg-[#080808] p-4 space-y-3">

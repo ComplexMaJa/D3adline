@@ -41,6 +41,7 @@ import {
   toggleCourseArchivedAction,
   removeStudentFromCourseAction,
   deleteCourseAction,
+  deleteAssignmentAction,
 } from "@/lib/actions";
 
 interface CourseDetailClientProps {
@@ -270,12 +271,7 @@ export function CourseDetailClient({
     if (!assignmentToDelete) return;
     setIsDeletingAssignment(true);
     try {
-      const { error } = await supabase
-        .from("assignments")
-        .delete()
-        .eq("id", assignmentToDelete.id);
-
-      if (error) throw error;
+      await deleteAssignmentAction(assignmentToDelete.id);
 
       setAssignments((prev) => prev.filter((a) => a.id !== assignmentToDelete.id));
       await refreshCourses();

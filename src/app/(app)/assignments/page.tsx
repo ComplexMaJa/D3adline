@@ -1,7 +1,8 @@
 import * as React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { AssignmentsClient } from "./AssignmentsClient";
-import { Assignment, Course } from "@/types/database";
+import { Assignment, Course, UserRole } from "@/types/database";
+import { deriveStudentAssignmentState } from "@/lib/assignment-state";
 
 export default async function AssignmentsPage() {
   const supabase = await createClient();
@@ -9,44 +10,67 @@ export default async function AssignmentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch all assignments with course data, submissions, and attachments
+  let userRole: UserRole = "student";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role) {
+      userRole = profile.role;
+    }
+  }
+
+  const isStudent = userRole === "student";
+
+  // Fetch all assignments with course data, submissions, attachments, subtasks
   const { data: rawAssignments } = await supabase
     .from("assignments")
     .select(`
       *,
       course:courses(*),
       submissions:assignment_submissions(*),
-      attachments:assignment_attachments(*)
+      attachments:assignment_attachments(*),
+      subtasks:assignment_subtasks(*)
     `)
     .order("due_date", { ascending: true });
 
-  // If student has a personal submission, overlay personal status & progress
-  const assignments: Assignment[] = ((rawAssignments || []) as any[]).map((a) => {
-    let mySub = null;
-    if (user && a.submissions && a.submissions.length > 0) {
-      mySub = a.submissions.find((s: any) => s.student_id === user.id);
-    }
-    const hasMyAttachment = Boolean(
-      user && a.attachments && a.attachments.some((att: any) => att.user_id === user.id)
-    );
-    const hasSubmitted = Boolean(
-      mySub?.submitted_at ||
-      (mySub?.submission_text && mySub.submission_text.trim().length > 0) ||
-      (mySub?.submission_note && mySub.submission_note.trim().length > 0) ||
-      hasMyAttachment
-    );
+  const assignmentList = (rawAssignments || []) as any[];
 
-    if (mySub) {
+  // For students, fetch their subtask completions
+  let subtaskCompletions: any[] = [];
+  if (isStudent && user) {
+    const { data: compData } = await supabase
+      .from("assignment_subtask_completions")
+      .select("*")
+      .eq("student_id", user.id);
+    subtaskCompletions = compData || [];
+  }
+
+  // Derive per-student assignment state
+  const assignments: Assignment[] = assignmentList.map((a) => {
+    if (isStudent && user) {
+      const mySub = a.submissions?.find((s: any) => s.student_id === user.id);
+      const myAtts = a.attachments?.filter((att: any) => att.user_id === user.id);
+      const studentState = deriveStudentAssignmentState(
+        a,
+        user.id,
+        mySub,
+        myAtts,
+        subtaskCompletions
+      );
+
       return {
         ...a,
-        status: mySub.status,
-        progress: mySub.progress,
-        has_submitted: hasSubmitted,
+        status: studentState.status,
+        progress: studentState.progress,
+        has_submitted: studentState.hasSubmitted,
       };
     }
     return {
       ...a,
-      has_submitted: hasSubmitted,
+      has_submitted: false,
     };
   });
 

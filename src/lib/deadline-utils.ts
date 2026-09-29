@@ -27,11 +27,29 @@ export interface DeadlineInfo {
 
 export function parseAssignmentDeadline(dueDateStr: string, dueTimeStr?: string | null): Date {
   if (!dueDateStr) return new Date();
-  
+
   const time = dueTimeStr || "23:59:00";
   // Clean time format to ensure HH:mm:ss
   const cleanTime = time.length === 5 ? `${time}:00` : time;
-  
+
+  // Robust component-based parsing avoiding UTC shift anomalies
+  const dateParts = dueDateStr.split("-");
+  const timeParts = cleanTime.split(":");
+
+  if (dateParts.length >= 3 && timeParts.length >= 2) {
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+    const hour = parseInt(timeParts[0], 10);
+    const min = parseInt(timeParts[1], 10);
+    const sec = parseInt(timeParts[2] || "0", 10);
+
+    const parsed = new Date(year, month, day, hour, min, sec);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
   try {
     const d = new Date(`${dueDateStr}T${cleanTime}`);
     if (isNaN(d.getTime())) {
@@ -47,7 +65,8 @@ export function getDeadlineInfo(
   dueDateStr: string,
   dueTimeStr?: string | null,
   statusOrLang?: AssignmentStatus | Language,
-  maybeLanguage?: Language
+  maybeLanguage?: Language,
+  currentTime?: Date
 ): DeadlineInfo {
   let status: AssignmentStatus | undefined;
   let language: Language = 'en';
@@ -62,18 +81,18 @@ export function getDeadlineInfo(
   }
 
   const deadline = parseAssignmentDeadline(dueDateStr, dueTimeStr);
-  const now = new Date();
+  const now = currentTime || new Date();
   const today = startOfDay(now);
   const deadlineDay = startOfDay(deadline);
   const isId = language === 'id';
   const locale = isId ? localeId : undefined;
-  
+
   const isCompleted = status === 'Completed';
   const daysDiff = differenceInCalendarDays(deadlineDay, today);
   const hoursDiff = differenceInHours(deadline, now);
-  const isPast = isBefore(deadline, now) && !isToday(deadline);
-  const isOverdue = (status === 'Overdue' || isPast || (isToday(deadline) && isBefore(deadline, now))) && !isCompleted;
-  
+  const isPast = isBefore(deadline, now);
+  const isOverdue = !isCompleted && (status === 'Overdue' || isPast);
+
   const formattedDate = format(deadline, isId ? "d MMM yyyy" : "MMM d, yyyy", { locale });
   const formattedTime = format(deadline, isId ? "HH:mm" : "h:mm a");
 
@@ -94,9 +113,12 @@ export function getDeadlineInfo(
   let label = "";
   let urgencyLevel: 'critical' | 'high' | 'medium' | 'normal' | 'completed' = 'normal';
 
+  const isDeadlineToday = daysDiff === 0;
+  const isDeadlineTomorrow = daysDiff === 1;
+
   if (isOverdue) {
     urgencyLevel = 'critical';
-    if (isYesterday(deadline)) {
+    if (daysDiff === -1) {
       label = isId ? `Terlewat · Kemarin` : `Overdue · Yesterday`;
     } else if (daysDiff < 0) {
       const absDays = Math.abs(daysDiff);
@@ -106,7 +128,7 @@ export function getDeadlineInfo(
     } else {
       label = isId ? `Terlewat · ${formattedTime}` : `Overdue · ${formattedTime}`;
     }
-  } else if (isToday(deadline)) {
+  } else if (isDeadlineToday) {
     urgencyLevel = 'high';
     if (hoursDiff > 0 && hoursDiff <= 3) {
       label = isId
@@ -115,7 +137,7 @@ export function getDeadlineInfo(
     } else {
       label = isId ? `Tenggat hari ini · ${formattedTime}` : `Due today · ${formattedTime}`;
     }
-  } else if (isTomorrow(deadline)) {
+  } else if (isDeadlineTomorrow) {
     urgencyLevel = 'medium';
     label = isId ? `Tenggat besok · ${formattedTime}` : `Due tomorrow · ${formattedTime}`;
   } else if (daysDiff > 1 && daysDiff <= 7) {
@@ -131,9 +153,9 @@ export function getDeadlineInfo(
   return {
     label,
     isOverdue,
-    isDueToday: isToday(deadline),
-    isDueTomorrow: isTomorrow(deadline),
-    isDueThisWeek: daysDiff >= 0 && daysDiff <= 7,
+    isDueToday: !isOverdue && isDeadlineToday,
+    isDueTomorrow: !isOverdue && isDeadlineTomorrow,
+    isDueThisWeek: !isOverdue && daysDiff >= 0 && daysDiff <= 7,
     daysRemaining: daysDiff,
     urgencyLevel,
     formattedDate,
@@ -171,7 +193,8 @@ export function formatDeadline(
   dueDateStr: string,
   dueTimeStr?: string | null,
   statusOrLang?: AssignmentStatus | Language,
-  maybeLanguage?: Language
+  maybeLanguage?: Language,
+  currentTime?: Date
 ) {
   let status: AssignmentStatus | undefined;
   let language: Language = 'en';
@@ -185,7 +208,8 @@ export function formatDeadline(
     }
   }
 
-  const info = getDeadlineInfo(dueDateStr, dueTimeStr, status, language);
+  const now = currentTime || new Date();
+  const info = getDeadlineInfo(dueDateStr, dueTimeStr, status, language, now);
   const deadline = parseAssignmentDeadline(dueDateStr, dueTimeStr);
   const isDueSoon = info.isDueThisWeek;
   const isId = language === 'id';
@@ -193,7 +217,7 @@ export function formatDeadline(
 
   let relative = info.label;
   if (info.isOverdue) {
-    const hours = Math.max(1, Math.abs(differenceInHours(deadline, new Date())));
+    const hours = Math.max(1, Math.abs(differenceInHours(deadline, now)));
     if (hours < 24) {
       relative = isId ? `Terlewat · ${hours} jam` : `Overdue · ${hours} hour${hours !== 1 ? 's' : ''}`;
     } else {
@@ -225,4 +249,14 @@ export function formatDeadline(
     raw: info,
   };
 }
+
+export function getUrgencyLevel(
+  dueDateStr: string,
+  dueTimeStr?: string | null,
+  status?: AssignmentStatus,
+  currentTime?: Date
+): DeadlineInfo["urgencyLevel"] {
+  return getDeadlineInfo(dueDateStr, dueTimeStr, status, "en", currentTime).urgencyLevel;
+}
+
 

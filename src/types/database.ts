@@ -103,6 +103,16 @@ export interface Subtask {
   position: number;
   created_at: string;
   updated_at: string;
+  is_completed_by_user?: boolean;
+}
+
+export interface SubtaskCompletion {
+  id: string;
+  subtask_id: string;
+  student_id: string;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Attachment {
@@ -189,6 +199,15 @@ export type Database = {
         };
         Update: Partial<Subtask>;
       };
+      assignment_subtask_completions: {
+        Row: SubtaskCompletion;
+        Insert: Omit<SubtaskCompletion, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<SubtaskCompletion>;
+      };
       assignment_attachments: {
         Row: Attachment;
         Insert: Omit<Attachment, 'id' | 'created_at'> & {
@@ -235,6 +254,14 @@ export type Database = {
           p_student_id: string;
         };
         Returns: void;
+      };
+      grade_assignment_submission: {
+        Args: {
+          p_submission_id: string;
+          p_grade: number | null;
+          p_feedback: string | null;
+        };
+        Returns: Json;
       };
     };
     Enums: {
