@@ -9,6 +9,7 @@ import {
   Circle,
   Flame,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -21,6 +22,7 @@ import { GradientWaves } from "@/components/ui/GradientWaves";
 // ========================================
 function CalendarGrid({ mouseX, mouseY }: { mouseX: number; mouseY: number }) {
   const prefersReduced = useReducedMotion();
+  const [selectedCell, setSelectedCell] = React.useState<number | null>(null);
 
   // 7 cols (days) × 5 rows (weeks) = 35 cells
   const deadlineCells = new Set([4, 11, 16, 22, 28, 33]);
@@ -31,8 +33,15 @@ function CalendarGrid({ mouseX, mouseY }: { mouseX: number; mouseY: number }) {
   const tiltX = prefersReduced ? 0 : (mouseY - 0.5) * -6;
   const tiltY = prefersReduced ? 0 : (mouseX - 0.5) * 6;
 
+  const selectedLabel =
+    selectedCell === null
+      ? "Hover a date to preview your workload"
+      : deadlineCells.has(selectedCell)
+        ? `Deadline preview · ${selectedCell + 1} Oct`
+        : `Open study day · ${selectedCell + 1} Oct`;
+
   return (
-    <div className="perspective-1000">
+    <div className="perspective-1000 relative">
       <div
         className="grid grid-cols-7 gap-1.5 sm:gap-2 preserve-3d transition-transform duration-300 ease-out"
         style={{
@@ -44,6 +53,9 @@ function CalendarGrid({ mouseX, mouseY }: { mouseX: number; mouseY: number }) {
           const isDeadline = deadlineCells.has(i);
           const isUrgent = urgentCells.has(i);
           const isOverdue = overdueCells.has(i);
+          const cellLabel = isDeadline
+            ? `${isUrgent ? "Urgent" : "Scheduled"} deadline on ${i + 1} October`
+            : `Open study day on ${i + 1} October`;
 
           let cellClass =
             "h-7 w-7 sm:h-9 sm:w-9 rounded-lg border transition-all duration-500 ";
@@ -66,15 +78,26 @@ function CalendarGrid({ mouseX, mouseY }: { mouseX: number; mouseY: number }) {
           }
 
           return (
-            <div
+            <button
               key={i}
+              type="button"
               className={cellClass}
+              aria-label={cellLabel}
+              aria-pressed={selectedCell === i}
+              onClick={() => setSelectedCell(i)}
+              onMouseEnter={() => setSelectedCell(i)}
               style={{
                 animationDelay: prefersReduced ? "0ms" : `${i * 60}ms`,
               }}
-            />
+            >
+              <span className="sr-only">{selectedLabel}</span>
+            </button>
           );
         })}
+      </div>
+      <div className="mt-3 flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-wider text-zinc-500 transition-colors duration-300">
+        <span className={`h-1.5 w-1.5 rounded-full ${selectedCell !== null && deadlineCells.has(selectedCell) ? "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.9)]" : "bg-purple-400"}`} />
+        <span>{selectedLabel}</span>
       </div>
     </div>
   );
@@ -121,7 +144,9 @@ export function LandingHero() {
   const t = landingTranslations[language].hero;
   const prefersReduced = useReducedMotion();
   const ctaRef = React.useRef<HTMLDivElement>(null);
+  const teaserRef = React.useRef<HTMLDivElement>(null);
   const magnetic = useMagnetic(ctaRef, 0.2);
+  const [teaserTilt, setTeaserTilt] = React.useState({ x: 0, y: 0 });
 
   // Normalized mouse position (0-1) for parallax
   const [mouse, setMouse] = React.useState({ x: 0.5, y: 0.5 });
@@ -155,6 +180,18 @@ export function LandingHero() {
 
   const completedCount = interactiveChecked.filter(Boolean).length;
   const progressPercent = Math.round((completedCount / interactiveChecked.length) * 100);
+
+  const handleTeaserMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (prefersReduced) return;
+    const card = teaserRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    setTeaserTilt({ x: y * -8, y: x * 10 });
+    card.style.setProperty("--mouse-x", `${(x + 0.5) * 100}%`);
+    card.style.setProperty("--mouse-y", `${(y + 0.5) * 100}%`);
+  };
 
   return (
     <section
@@ -200,7 +237,7 @@ export function LandingHero() {
 
       <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         {/* Left: Copy */}
-        <div className="text-center lg:text-left">
+        <div className="relative z-20 text-center lg:text-left hero-copy">
           {/* Hero Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold uppercase tracking-wider mb-6 animate-fade-in">
             <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
@@ -211,8 +248,11 @@ export function LandingHero() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-display font-bold tracking-tight text-white leading-[1.08] mb-6 drop-shadow-sm">
             <WordReveal text={t.titleLine1} delay={0.2} />
             <br />
-            <span className="bg-gradient-to-r from-purple-300 via-violet-200 to-indigo-200 bg-clip-text text-transparent">
-              <WordReveal text={t.titleHighlight} delay={0.5} />
+            <span
+              className="inline-block bg-gradient-to-r from-purple-300 via-violet-200 to-indigo-200 bg-clip-text text-transparent animate-fade-in"
+              style={{ animationDelay: "0.5s", animationFillMode: "both" }}
+            >
+              {t.titleHighlight}
             </span>
           </h1>
 
@@ -245,14 +285,34 @@ export function LandingHero() {
         </div>
 
         {/* Right: Interactive Calendar Grid + Task Card */}
-        <div className="relative flex flex-col items-center lg:items-end gap-6">
+        <div className="relative flex flex-col items-center lg:items-end gap-6 hero-stage">
           {/* Abstract Calendar Grid */}
           <div className="animate-fade-in" style={{ animationDelay: "0.6s", animationFillMode: "both" }}>
             <CalendarGrid mouseX={mouse.x} mouseY={mouse.y} />
           </div>
 
           {/* Interactive AMOLED Task Teaser Card */}
-          <div className="w-full max-w-md rounded-2xl border border-white/[0.06] bg-[#0A0A0A]/90 p-5 text-left shadow-2xl backdrop-blur-xl relative group hover:border-purple-500/30 transition-all duration-300 card-shine animate-fade-in" style={{ animationDelay: "0.9s", animationFillMode: "both" }}>
+          <div
+            ref={teaserRef}
+            onMouseMove={handleTeaserMove}
+            onMouseLeave={() => {
+              setTeaserTilt({ x: 0, y: 0 });
+              teaserRef.current?.style.setProperty("--mouse-x", "50%");
+              teaserRef.current?.style.setProperty("--mouse-y", "50%");
+            }}
+            className={`w-full max-w-md rounded-2xl border border-white/[0.06] bg-[#0A0A0A]/90 p-5 text-left shadow-2xl backdrop-blur-xl relative group hover:border-purple-500/30 transition-all duration-500 card-shine hero-teaser hero-teaser-enter ${completedCount === interactiveChecked.length ? "hero-teaser-complete" : ""}`}
+            style={{
+              animationDelay: "0.9s",
+              animationFillMode: "both",
+              transform: `perspective(1200px) rotateX(${teaserTilt.x}deg) rotateY(${teaserTilt.y}deg) translateZ(0)`,
+            }}
+          >
+            <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-purple-400/20 via-transparent to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <div className="absolute top-3 right-5 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-zinc-600 group-hover:text-purple-300 transition-colors">
+              <Sparkles className="h-3 w-3" />
+              Live preview
+            </div>
+            <div className="hero-teaser-content">
             {/* Top Window Dots */}
             <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
@@ -286,7 +346,7 @@ export function LandingHero() {
             </div>
 
             {/* Progress Bar */}
-            <div className="space-y-1.5 mb-4">
+            <div className="space-y-1.5 mb-4 relative z-10">
               <div className="flex justify-between text-xs text-zinc-500">
                 <span>
                   {language === "id"
@@ -304,7 +364,7 @@ export function LandingHero() {
             </div>
 
             {/* Subtasks Interactive Checklist */}
-            <div className="space-y-1.5 pt-3 border-t border-white/[0.04]">
+            <div className="space-y-1.5 pt-3 border-t border-white/[0.04] relative z-10">
               {[
                 language === "id" ? "Log replikasi mesin keadaan (State Machine)" : "State machine replication log",
                 language === "id" ? "Uji batas waktu pemilihan pemimpin (Leader Election)" : "Leader election timeout test",
@@ -338,6 +398,12 @@ export function LandingHero() {
                   </span>
                 </button>
               ))}
+            </div>
+            <div className="mt-3 min-h-5 text-center text-[10px] font-medium text-emerald-300 transition-all duration-300" aria-live="polite">
+              {completedCount === interactiveChecked.length
+                ? "All set. Your next deadline is under control."
+                : `${interactiveChecked.length - completedCount} task${interactiveChecked.length - completedCount === 1 ? "" : "s"} left to clear`}
+            </div>
             </div>
           </div>
         </div>
