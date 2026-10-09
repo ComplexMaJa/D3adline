@@ -9,13 +9,13 @@ import {
   Circle,
   Flame,
   BookOpen,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { landingTranslations } from "@/lib/i18n/translations/landing";
 import { useReducedMotion, useMagnetic } from "@/lib/hooks/useMotion";
 import { GradientWaves } from "@/components/ui/GradientWaves";
+import TiltedCard from "@/components/ui/TiltedCard";
 
 // ========================================
 // Animated Calendar Grid — Hero Visualization
@@ -144,9 +144,7 @@ export function LandingHero() {
   const t = landingTranslations[language].hero;
   const prefersReduced = useReducedMotion();
   const ctaRef = React.useRef<HTMLDivElement>(null);
-  const teaserRef = React.useRef<HTMLDivElement>(null);
   const magnetic = useMagnetic(ctaRef, 0.2);
-  const [teaserTilt, setTeaserTilt] = React.useState({ x: 0, y: 0 });
 
   // Normalized mouse position (0-1) for parallax
   const [mouse, setMouse] = React.useState({ x: 0.5, y: 0.5 });
@@ -180,18 +178,6 @@ export function LandingHero() {
 
   const completedCount = interactiveChecked.filter(Boolean).length;
   const progressPercent = Math.round((completedCount / interactiveChecked.length) * 100);
-
-  const handleTeaserMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (prefersReduced) return;
-    const card = teaserRef.current;
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    setTeaserTilt({ x: y * -8, y: x * 10 });
-    card.style.setProperty("--mouse-x", `${(x + 0.5) * 100}%`);
-    card.style.setProperty("--mouse-y", `${(y + 0.5) * 100}%`);
-  };
 
   return (
     <section
@@ -292,27 +278,20 @@ export function LandingHero() {
           </div>
 
           {/* Interactive AMOLED Task Teaser Card */}
-          <div
-            ref={teaserRef}
-            onMouseMove={handleTeaserMove}
-            onMouseLeave={() => {
-              setTeaserTilt({ x: 0, y: 0 });
-              teaserRef.current?.style.setProperty("--mouse-x", "50%");
-              teaserRef.current?.style.setProperty("--mouse-y", "50%");
-            }}
-            className={`w-full max-w-md rounded-2xl border border-white/[0.06] bg-[#0A0A0A]/90 p-5 text-left shadow-2xl backdrop-blur-xl relative group hover:border-purple-500/30 transition-all duration-500 card-shine hero-teaser hero-teaser-enter ${completedCount === interactiveChecked.length ? "hero-teaser-complete" : ""}`}
-            style={{
-              animationDelay: "0.9s",
-              animationFillMode: "both",
-              transform: `perspective(1200px) rotateX(${teaserTilt.x}deg) rotateY(${teaserTilt.y}deg) translateZ(0)`,
-            }}
-          >
-            <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-purple-400/20 via-transparent to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            <div className="absolute top-3 right-5 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-zinc-600 group-hover:text-purple-300 transition-colors">
-              <Sparkles className="h-3 w-3" />
-              Live preview
-            </div>
-            <div className="hero-teaser-content">
+          <TiltedCard
+            containerHeight="440px"
+            containerWidth="100%"
+            imageWidth="100%"
+            imageHeight="100%"
+            scaleOnHover={prefersReduced ? 1 : 1.025}
+            rotateAmplitude={prefersReduced ? 0 : 7}
+            showMobileWarning={false}
+            showTooltip={false}
+            displayOverlayContent
+            overlayContent={
+              <div className={`hero-teaser w-full h-full rounded-2xl border border-white/[0.06] bg-[#0A0A0A]/90 p-5 text-left shadow-2xl backdrop-blur-xl relative group card-shine ${completedCount === interactiveChecked.length ? "hero-teaser-complete" : ""}`}>
+                <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-purple-400/20 via-transparent to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="hero-teaser-content">
             {/* Top Window Dots */}
             <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
@@ -326,8 +305,8 @@ export function LandingHero() {
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-medium">
                 <Clock className="h-3.5 w-3.5 text-amber-400" />
                 <span>{t.teaserDueTomorrow}</span>
+                </div>
               </div>
-            </div>
 
             {/* Task Title & Course */}
             <div className="space-y-1 mb-4">
@@ -405,9 +384,11 @@ export function LandingHero() {
                 : `${interactiveChecked.length - completedCount} task${interactiveChecked.length - completedCount === 1 ? "" : "s"} left to clear`}
             </div>
             </div>
+            </div>
+              }
+            />
           </div>
         </div>
-      </div>
     </section>
   );
 }
